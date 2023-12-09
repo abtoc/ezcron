@@ -3,7 +3,7 @@ use std::fs::File;
 use std::ffi::OsString;
 use std::io::{Write, BufRead, BufReader, BufWriter};
 use std::os::fd::FromRawFd;
-use std::path::Path;
+use std::path::{Path, PathBuf};
 use chrono::{DateTime, Local};
 use getopts::Options;
 use serde::Serialize;
@@ -43,9 +43,64 @@ struct Report {
     end_at: DateTime<Local>, 
 }
 
-fn do_exec(identifer: &str, args: &[String]) -> Report {
+struct Pid {
+    multipled: bool,
+    path: Box<PathBuf>,
+    pid: u32,
+}
+
+impl Pid {
+    fn new(identifer: &str, multipled: bool) -> Self {
+        #[cfg(debug_assertions)]
+        let path = Path::new("run/ezcron")
+            .join(format!("{}.pid", identifer));
+        #[cfg(not(debug_assertions))]
+        let path = Path::new("/run/ezcron")
+            .join(format!("{}.pid", identifer));
+        Self {
+            multipled: multipled,
+            path: Box::new(path),
+            pid: 0,
+        }
+    }
+    fn is_exists(&self) -> bool {
+        !self.multipled && self.path.is_file()
+    }
+    fn touch(&mut self, pid: u32) -> std::io::Result<()> {
+        self.pid = pid;
+        if !self.multipled {
+            let mut bw = File::create(self.path.as_path())
+                .map(|fs| BufWriter::new(fs))
+                .unwrap();
+            let pid = format!("{}", pid);
+            bw.write(pid.as_bytes()).unwrap();
+        }
+        Ok(())
+    }
+}
+
+impl Drop for Pid {
+    fn drop(&mut self) {
+        if self.pid > 0 && self.path.is_file() {
+            std::fs::remove_file(self.path.as_path()).unwrap();
+        }
+    }
+}
+
+fn do_exec(identifer: &str, args: &[String], multipled: bool) -> Option<Report> {
+    // pidファイルの作成
+    let mut pid_file = Pid::new(identifer, multipled);
+    if pid_file.is_exists() {
+        // 同時実行を許可していなく、既に実行済であればリターン
+        return None;
+    }
+
     // ログファイルの作成
+    #[cfg(debug_assertions)]
     let log_path = Path::new("var/log/ezcron")
+        .join(format!("{}-{}.log", Local::now().format("%Y%m%d-%H%M%S"), identifer));
+    #[cfg(not(debug_assertions))]
+    let log_path = Path::new("/var/log/ezcron")
         .join(format!("{}-{}.log", Local::now().format("%Y%m%d-%H%M%S"), identifer));
     let mut bw = File::create(log_path.clone())
         .map(|fs| BufWriter::new(fs))
@@ -88,9 +143,13 @@ fn do_exec(identifer: &str, args: &[String]) -> Report {
             report.end_at = Local::now();
             log_write(&mut bw, "--------").unwrap();
             log_write(&mut bw, &report.result).unwrap();
-            return report;
+            return Some(report);
         },
     };
+
+    // pidファイルの書き込み
+    report.pid = popen.pid().unwrap_or(0);
+    pid_file.touch(popen.pid().unwrap_or(0)).unwrap();
 
     // 標準出力、標準エラーをログファイルに書き込み
     let br = BufReader::new(r);
@@ -100,9 +159,6 @@ fn do_exec(identifer: &str, args: &[String]) -> Report {
         }
     }
 
-    // pidファイルの書き込み
-    report.pid = popen.pid().unwrap_or(0);
-
     // プロセス終了まで待つ
     let Ok(status) = popen.wait() else {
         report.result = "process wait error".to_string();
@@ -110,7 +166,7 @@ fn do_exec(identifer: &str, args: &[String]) -> Report {
         report.end_at = Local::now();
         log_write(&mut bw, "--------").unwrap();
         log_write(&mut bw, &report.result).unwrap();
-        return report;
+        return Some(report);
     };
 
     // 終了処理
@@ -135,7 +191,7 @@ fn do_exec(identifer: &str, args: &[String]) -> Report {
         _ => (),
     };
 
-    report
+    Some(report)
 }
 
 fn do_report(report: &Report, reporter: String) {
@@ -161,6 +217,7 @@ fn main() {
     // オプションの定義を行う
     let mut opts = Options::new();
     opts.optopt("r", "report", "reporting the result of process", "SCRIPT");
+    opts.optflag("m", "multipled", "allows concurrent execution");
     opts.optflag("h", "help", "print this help menu");
 
     // オプションの指定が無ければusageを表示して終了する
@@ -196,14 +253,17 @@ fn main() {
         return;
     };
 
-     // プログラムの実行
-    let report = do_exec(&identifer, &args[pos+1..]);
+    // プログラムの実行
+    let multipled = matches.opt_present("m");
+    let report = do_exec(&identifer, &args[pos+1..], multipled);
 
     // レポート出力
-    let reporter = matches.opt_str("r");
-    if let Some(reporter) = reporter {
-        do_report(&report, reporter);
-    }
+    if let Some(report) = report {
+        let reporter = matches.opt_str("r");
+        if let Some(reporter) = reporter {
+            do_report(&report, reporter);
+        }
+    }  
 }
 
 #[cfg(test)]
