@@ -18,7 +18,7 @@ crontabに加えることによって、crond上で動作するコマンド、�
 ## 使い方
 
 ```bash
-ezcron --report /path/to/report.sh -- /path/to/yourscript
+ezcron --report /path/to/report.sh IDENTIFER -- /path/to/yourscript
 ```
 
 ## オプション
