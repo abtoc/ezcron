@@ -111,8 +111,8 @@ fn do_exec(identifer: &str, args: &[String], multipled: bool) -> Option<Report> 
     // レポートの作成
     let mut report = Report {
         identifer: identifer.to_string(),
-        command: args[0].clone(),
-        args: args[1..].to_vec(),
+        command: args.join(" ").clone(),
+        args: args.to_vec(),
         log: log_path.to_string_lossy().into_owned(),
         ..Default::default()
     };
