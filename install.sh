@@ -18,9 +18,9 @@ case $(uname -sm) in
 esac
 
 if [ $# -eq 0 ]; then
-    ezjob_url="https://github.com/abtoc/ezcron/releases/download/v0.1.0/ezcron_${target}.tar.gz"
+    ezjob_url="https://github.com/abtoc/ezcron/releases/latest/download/ezcron_${target}.tar.gz"
 else
-    ezjob_url="https://github.com/abtoc/ezcron/releases/download/v0.1.0/ezcron_${target}.tar.gz"
+    ezjob_url="https://github.com/abtoc/ezcron/releases/download/${1}/ezcron_${target}.tar.gz"
 fi
 
 curl --fail --location --progress-bar --output /tmp/ezcron.tar.gz ${ezjob_url}
