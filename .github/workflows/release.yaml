@@ -49,4 +49,4 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           files: |
-            target/${{ env.PROJECT_NAME }}_{{ matrix.job.target }}.tar.gz
+            target/${{ matrix.job.target }}/release/${{ env.PROJECT_NAME }}_{{ matrix.job.target }}.tar.gz
