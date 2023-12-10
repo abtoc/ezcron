@@ -21,7 +21,7 @@ crontabに加えることによって、crond上で動作するコマンド、�
 ezcron --report /path/to/report.sh -- /path/to/yourscript
 ```
 
-##　オプション
+## オプション
 
 ```
 Usage: ./ezcron [OPTIONS] IDENTIFER -- args
