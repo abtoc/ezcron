@@ -14,12 +14,12 @@ crontabに加えることによって、crond上で動作するコマンド、�
 ## インストール
 
 ```bash
-curl https://raw.githubusercontent.com/abtoc/ezcron/main/LICENSE | sh
+curl -fsSL https://raw.githubusercontent.com/abtoc/ezcron/main/install.sh | sh
 ```
 
 バージョンを指定してインストール
 ```bash
-curl https://raw.githubusercontent.com/abtoc/ezcron/main/LICENSE | sh v0.1.0
+curl -fsSL https://raw.githubusercontent.com/abtoc/ezcron/main/install.sh | sh
 ```
 
 
