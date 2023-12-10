@@ -29,6 +29,8 @@ curl -fsSL https://raw.githubusercontent.com/abtoc/ezcron/main/install.sh | sh -
 ezcron --report /path/to/report.sh IDENTIFER -- /path/to/yourscript
 ```
 
+ログは```/var/log/ezlog```配下に出力されます。
+
 ## オプション
 
 ```
