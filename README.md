@@ -13,7 +13,15 @@ crontabに加えることによって、crond上で動作するコマンド、�
 
 ## インストール
 
-現在準備中
+```bash
+curl https://raw.githubusercontent.com/abtoc/ezcron/main/LICENSE | sh
+```
+
+バージョンを指定してインストール
+```bash
+curl https://raw.githubusercontent.com/abtoc/ezcron/main/LICENSE | sh v0.1.0
+```
+
 
 ## 使い方
 

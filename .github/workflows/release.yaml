@@ -42,10 +42,8 @@ jobs:
       - name: Archive
         shell: bash
         run: |
-          pushd target/${{ matrix.job.target }}/release
+          cd target/${{ matrix.job.target }}/release
           tar zcvf ../../${{ env.PROJECT_NAME }}_${{ matrix.job.target }}.tar.gz ${{ env.PROJECT_NAME }}
-          popd
-          ls -al target
       - name: Release
         uses: softprops/action-gh-release@v1
         env:
