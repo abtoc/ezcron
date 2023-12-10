@@ -25,7 +25,7 @@ curl -fsSL https://raw.githubusercontent.com/abtoc/ezcron/main/install.sh | sh -
 
 ## 使い方
 
-```ezjob```を以下のようにcrontabに指定します。
+```ezcron```を以下のようにcrontabに指定します。
 
 ```crontab
 * * * * * ezcron --report /path/to/report.sh IDENTIFER -- /path/to/yourscript
