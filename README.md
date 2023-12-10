@@ -19,7 +19,7 @@ curl -fsSL https://raw.githubusercontent.com/abtoc/ezcron/main/install.sh | sh
 
 バージョンを指定してインストール
 ```bash
-curl -fsSL https://raw.githubusercontent.com/abtoc/ezcron/main/install.sh | sh
+curl -fsSL https://raw.githubusercontent.com/abtoc/ezcron/main/install.sh | sh v0.1.0
 ```
 
 
