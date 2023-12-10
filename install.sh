@@ -1,4 +1,4 @@
-#!/bin/sh
+#!/bin/bash
 
 set -e
 
@@ -37,3 +37,5 @@ fi
 if [ ! -d /run/ezcron ]; then
     sudo mkdir /run/ezcron
 fi
+
+echo "Install completed"
