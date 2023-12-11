@@ -11,7 +11,7 @@ pub struct Options {
 impl Options {
     pub fn new(program: &String) -> Self {
         let mut opts = getopts::Options::new();
-        opts.optopt("r", "report", "reporting the result of process", "SCRIPT");
+        opts.optmulti("r", "report", "reporting the result of process", "SCRIPT");
         opts.optflag("m", "multipled", "allows concurrent execution");
         opts.optflag("", "version", "print version and close");
         opts.optflag("h", "help", "print this help menu and close");
