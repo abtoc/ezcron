@@ -1,3 +1,7 @@
+pub mod config;
+pub mod logger;
+pub mod options;
+
 use std::env;
 use std::fs::File;
 use std::ffi::OsString;
@@ -8,8 +12,9 @@ use chrono::{DateTime, Local};
 use gethostname::gethostname;
 use serde::Serialize;
 use subprocess::{Exec, ExitStatus, NullFile, Popen, PopenConfig, Redirection};
-use ezcron::config::{self, Config};
-use ezcron::options::Options;
+use config::Config;
+use logger::Logger;
+use options::Options;
 
 fn check_err<T: Ord + Default>(num: T) -> std::io::Result<T> {
     if num < T::default() {
@@ -22,14 +27,6 @@ fn pipe() -> std::io::Result<(File, File)> {
     let mut fds = [0 as libc::c_int; 2];
     check_err(unsafe { libc::pipe(fds.as_mut_ptr()) })?;
     Ok(unsafe { (File::from_raw_fd(fds[0]), File::from_raw_fd(fds[1])) })
-}
-
-fn log_write<W: std::io::Write>(bw: &mut BufWriter<W>, line: &str) -> std::io::Result<usize> {
-    let line = format!("{}|{}\n",
-        Local::now().format("%Y-%m-%dT%H:%M:%S"),
-        line
-    );
-    bw.write(line.as_bytes())
 }
 
 #[derive(Debug, Default, Serialize)]
@@ -53,8 +50,8 @@ struct Pid {
 }
 
 impl Pid {
-    fn new(identifer: &str, multipled: bool, config: &Config) -> Self {
-        let path = Path::new(&config.ezcron.pid_dir)
+    fn new(identifer: &str, multipled: bool, pid_dir: &str) -> Self {
+        let path = Path::new(pid_dir)
             .join(format!("{}.pid", identifer));
         Self {
             multipled: multipled,
@@ -91,20 +88,19 @@ fn do_exec(args: &[String], opts: &Options, config: &Config) -> Option<Report> {
     let multipled = opts.multipled;
 
     // pidファイルの作成
-    let mut pid_file = Pid::new(&identifer, multipled, &config);
+    let mut pid_file = Pid::new(&identifer, multipled, &config.ezcron.pid_dir);
     if pid_file.is_exists() {
         // 同時実行を許可していなく、既に実行済であればリターン
         return None;
     }
 
     // ログファイルの作成
-    let log_path = Path::new(&config.ezcron.log_dir)
-        .join(format!("{}-{}.log", Local::now().format("%Y%m%d-%H%M%S"), identifer));
-    let mut bw = File::create(log_path.clone())
-        .map(|fs| BufWriter::new(fs))
+    let mut logger = Logger::new(
+            &opts.identifer.clone().unwrap(),
+            &config.ezcron.log_dir)
         .unwrap();
-    log_write(&mut bw, &format!("start program! '{}'", args.join(" "))).unwrap();
-    log_write(&mut bw, "--------").unwrap();
+    logger.write(&format!("start program! '{}'", args.join(" "))).unwrap();
+    logger.write("--------").unwrap();
 
     // レポートの作成
     let mut report = Report {
@@ -112,7 +108,7 @@ fn do_exec(args: &[String], opts: &Options, config: &Config) -> Option<Report> {
         hostname: gethostname(),
         command: args.join(" ").clone(),
         args: args.to_vec(),
-        log: log_path.to_string_lossy().into_owned(),
+        log: logger.path.clone(),
         ..Default::default()
     };
 
@@ -140,8 +136,8 @@ fn do_exec(args: &[String], opts: &Options, config: &Config) -> Option<Report> {
             report.result = format!("process execute error! '{}'", err);
             report.exitcode = 127;
             report.end_at = Local::now();
-            log_write(&mut bw, "--------").unwrap();
-            log_write(&mut bw, &report.result).unwrap();
+            logger.write("--------").unwrap();
+            logger.write(&report.result).unwrap();
             return Some(report);
         },
     };
@@ -154,7 +150,7 @@ fn do_exec(args: &[String], opts: &Options, config: &Config) -> Option<Report> {
     let br = BufReader::new(r);
     for line in br.lines() {
         if let Ok(line) = line {
-            log_write(&mut bw, &line).unwrap();
+            logger.write(&line).unwrap();
         }
     }
 
@@ -163,29 +159,29 @@ fn do_exec(args: &[String], opts: &Options, config: &Config) -> Option<Report> {
         report.result = "process wait error".to_string();
         report.exitcode = 128;
         report.end_at = Local::now();
-        log_write(&mut bw, "--------").unwrap();
-        log_write(&mut bw, &report.result).unwrap();
+        logger.write("--------").unwrap();
+        logger.write(&report.result).unwrap();
         return Some(report);
     };
 
     // 終了処理
-    log_write(&mut bw, "--------").unwrap();
+    logger.write("--------").unwrap();
     report.end_at = Local::now();
     match status {
         ExitStatus::Exited(code) => {
             report.result = format!("process terminated code({})", code);
             report.exitcode = code;
-            log_write(&mut bw, &report.result).unwrap();
+            logger.write(&report.result).unwrap();
         },
         ExitStatus::Signaled(sig) => {
             report.result = format!("process recieve signal({})", sig);
             report.exitcode = sig as u32 + 128;
-            log_write(&mut bw, &report.result).unwrap();
+            logger.write(&report.result).unwrap();
         },
         ExitStatus::Other(code) => {
             report.result = format!("process terminated with no occurrence({})", code);
             report.exitcode = code as u32;
-            log_write(&mut bw, &report.result).unwrap();
+            logger.write(&report.result).unwrap();
         },
         _ => (),
     };

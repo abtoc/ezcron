@@ -26,8 +26,10 @@ fi
 curl --fail --location --progress-bar --output /tmp/ezcron.tar.gz ${ezjob_url}
 cd /tmp
 sudo tar zxf ezcron.tar.gz -C /tmp
-sudo cp -p  ezcron /usr/local/bin
+sudo cp ezcron /usr/local/bin/
+sudo cp ezcron.toml /etc/
 sudo rm /tmp/ezcron
+sudo rm /tmp/ezcron.toml
 sudo rm /tmp/ezcron.tar.gz
 
 if [ ! -d /var/log/ezcron ]; then
