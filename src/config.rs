@@ -14,9 +14,6 @@ pub struct ConfigEzCron {
 }
 
 #[derive(Debug, Deserialize)]
-
-
-#[derive(Debug, Deserialize)]
 pub struct Config {
     pub ezcron: ConfigEzCron,
 }
