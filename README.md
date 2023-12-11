@@ -36,7 +36,7 @@ curl -fsSL https://raw.githubusercontent.com/abtoc/ezcron/main/install.sh | sh -
 ## オプション
 
 ```
-Usage: ./ezcron [OPTIONS] IDENTIFER -- args
+Usage: ezcron [OPTIONS] IDENTIFER -- args
 
 Options:
     -r, --report SCRIPT reporting the result of process
