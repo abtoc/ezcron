@@ -5,9 +5,9 @@ use std::io::{Write, BufRead, BufReader, BufWriter};
 use std::os::fd::FromRawFd;
 use std::path::{Path, PathBuf};
 use chrono::{DateTime, Local};
-use getopts::Options;
 use serde::Serialize;
 use subprocess::{Exec, ExitStatus, NullFile, Popen, PopenConfig, Redirection};
+use ezcron::options::Options;
 
 fn check_err<T: Ord + Default>(num: T) -> std::io::Result<T> {
     if num < T::default() {
@@ -87,9 +87,12 @@ impl Drop for Pid {
     }
 }
 
-fn do_exec(identifer: &str, args: &[String], multipled: bool) -> Option<Report> {
+fn do_exec(args: &[String], opts: &Options) -> Option<Report> {
+    let identifer = opts.identifer.clone().unwrap();
+    let multipled = opts.multipled;
+
     // pidファイルの作成
-    let mut pid_file = Pid::new(identifer, multipled);
+    let mut pid_file = Pid::new(&identifer, multipled);
     if pid_file.is_exists() {
         // 同時実行を許可していなく、既に実行済であればリターン
         return None;
@@ -194,19 +197,16 @@ fn do_exec(identifer: &str, args: &[String], multipled: bool) -> Option<Report> 
     Some(report)
 }
 
-fn do_report(report: &Report, reporter: String) {
+fn do_report(report: &Report, reporters: &Vec<String>) {
     let json: &str = &serde_json::to_string(&report).unwrap();
 
-    let _ =Exec::shell(reporter)
-        .stdin(json)
-        .stdout(NullFile)
-        .capture()
-        .unwrap();
-}
-
-fn print_usage(program: &str, opts: &Options) {
-    let msg = format!("Usage: {} [OPTIONS] IDENTIFER -- args", program);
-    print!("{}", opts.usage(&msg));
+    for reporter in reporters {
+        let _ =Exec::shell(reporter)
+            .stdin(json)
+            .stdout(NullFile)
+            .capture()
+            .unwrap();
+    }
 }
 
 fn main() {
@@ -215,14 +215,11 @@ fn main() {
     let program = args[0].clone();
 
     // オプションの定義を行う
-    let mut opts = Options::new();
-    opts.optopt("r", "report", "reporting the result of process", "SCRIPT");
-    opts.optflag("m", "multipled", "allows concurrent execution");
-    opts.optflag("h", "help", "print this help menu");
+    let mut opts = Options::new(&program);
 
     // オプションの指定が無ければusageを表示して終了する
     if args.len() <= 1 {
-        print_usage(&program, &opts);
+        opts.print_usage();
         return;
     }
 
@@ -232,38 +229,38 @@ fn main() {
         None => args.len(),
     };
 
-    // 引数"--"以降に無いも指定が無ければ終了する
-    if args.len() <= pos {
-        print_usage(&program, &opts);
+    // オプション解析
+    opts.parse(&args[1..pos]);
+
+    // ヘルプ表示
+    if opts.help {
+        opts.print_usage();
         return;
     }
 
-    // オプションの解析
-    let matches = opts.parse(&args[1..pos]).unwrap();
-    if matches.opt_present("h") {
-        print_usage(&program, &opts);
+    // バージョン表示
+    if opts.version {
+        opts.print_version();
         return;
     }
 
     // IDを取得する
-    let identifer = if !matches.free.is_empty() {
-        matches.free[0].clone()
-    } else {
-        print_usage(&program, &opts);
+    if opts.identifer == None {
+        opts.print_usage();
         return;
-    };
+    }
+
+    // 引数"--"以降に無いも指定が無ければ終了する
+    if args.len() <= pos {
+        opts.print_usage();
+        return;
+    }
 
     // プログラムの実行
-    let multipled = matches.opt_present("m");
-    let report = do_exec(&identifer, &args[pos+1..], multipled);
+    let report = do_exec(&args[pos+1..], &opts).unwrap();
 
     // レポート出力
-    if let Some(report) = report {
-        let reporter = matches.opt_str("r");
-        if let Some(reporter) = reporter {
-            do_report(&report, reporter);
-        }
-    }  
+    do_report(&report, &opts.reports);
 }
 
 #[cfg(test)]
