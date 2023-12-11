@@ -9,8 +9,10 @@ edition = "2021"
 chan = "0.1.23"
 chan-signal = "0.3.3"
 chrono = { version = "0.4.31", features = ["serde"] }
+gethostname = "0.4.3"
 getopts = "0.2.21"
 libc = "0.2.150"
 serde = { version = "1.0.193", features = ["derive"] }
 serde_json = "1.0.108"
 subprocess = "0.2.9"
+toml = "0.8.8"

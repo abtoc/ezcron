@@ -5,8 +5,10 @@ use std::io::{Write, BufRead, BufReader, BufWriter};
 use std::os::fd::FromRawFd;
 use std::path::{Path, PathBuf};
 use chrono::{DateTime, Local};
+use gethostname::gethostname;
 use serde::Serialize;
 use subprocess::{Exec, ExitStatus, NullFile, Popen, PopenConfig, Redirection};
+use ezcron::config::{self, Config};
 use ezcron::options::Options;
 
 fn check_err<T: Ord + Default>(num: T) -> std::io::Result<T> {
@@ -33,6 +35,7 @@ fn log_write<W: std::io::Write>(bw: &mut BufWriter<W>, line: &str) -> std::io::R
 #[derive(Debug, Default, Serialize)]
 struct Report {
     identifer: String,
+    hostname: OsString,
     command: String,
     args: Vec<String>,
     exitcode: u32,
@@ -50,12 +53,8 @@ struct Pid {
 }
 
 impl Pid {
-    fn new(identifer: &str, multipled: bool) -> Self {
-        #[cfg(debug_assertions)]
-        let path = Path::new("run/ezcron")
-            .join(format!("{}.pid", identifer));
-        #[cfg(not(debug_assertions))]
-        let path = Path::new("/run/ezcron")
+    fn new(identifer: &str, multipled: bool, config: &Config) -> Self {
+        let path = Path::new(&config.ezcron.pid_dir)
             .join(format!("{}.pid", identifer));
         Self {
             multipled: multipled,
@@ -87,23 +86,19 @@ impl Drop for Pid {
     }
 }
 
-fn do_exec(args: &[String], opts: &Options) -> Option<Report> {
+fn do_exec(args: &[String], opts: &Options, config: &Config) -> Option<Report> {
     let identifer = opts.identifer.clone().unwrap();
     let multipled = opts.multipled;
 
     // pidファイルの作成
-    let mut pid_file = Pid::new(&identifer, multipled);
+    let mut pid_file = Pid::new(&identifer, multipled, &config);
     if pid_file.is_exists() {
         // 同時実行を許可していなく、既に実行済であればリターン
         return None;
     }
 
     // ログファイルの作成
-    #[cfg(debug_assertions)]
-    let log_path = Path::new("var/log/ezcron")
-        .join(format!("{}-{}.log", Local::now().format("%Y%m%d-%H%M%S"), identifer));
-    #[cfg(not(debug_assertions))]
-    let log_path = Path::new("/var/log/ezcron")
+    let log_path = Path::new(&config.ezcron.log_dir)
         .join(format!("{}-{}.log", Local::now().format("%Y%m%d-%H%M%S"), identifer));
     let mut bw = File::create(log_path.clone())
         .map(|fs| BufWriter::new(fs))
@@ -114,6 +109,7 @@ fn do_exec(args: &[String], opts: &Options) -> Option<Report> {
     // レポートの作成
     let mut report = Report {
         identifer: identifer.to_string(),
+        hostname: gethostname(),
         command: args.join(" ").clone(),
         args: args.to_vec(),
         log: log_path.to_string_lossy().into_owned(),
@@ -256,8 +252,11 @@ fn main() {
         return;
     }
 
+    // 設定ファイル読み込み
+    let config = config::load(opts.conf.clone()).unwrap();
+
     // プログラムの実行
-    let report = do_exec(&args[pos+1..], &opts).unwrap();
+    let report = do_exec(&args[pos+1..], &opts, &config).unwrap();
 
     // レポート出力
     do_report(&report, &opts.reports);

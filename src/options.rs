@@ -6,12 +6,14 @@ pub struct Options {
     pub version: bool,
     pub multipled: bool,
     pub reports: Vec<String>,
+    pub conf: Option<String>,
 }
 
 impl Options {
     pub fn new(program: &String) -> Self {
         let mut opts = getopts::Options::new();
         opts.optmulti("r", "report", "reporting the result of process", "SCRIPT");
+        opts.optopt("c", "conf", "specifies the ezjob configuration file", "FILE");
         opts.optflag("m", "multipled", "allows concurrent execution");
         opts.optflag("", "version", "print version and close");
         opts.optflag("h", "help", "print this help menu and close");
@@ -23,6 +25,8 @@ impl Options {
             version: false,
             multipled: false,
             reports: Vec::new(),
+            conf: None,
+
         }
     }
     pub fn print_usage(&self){
@@ -47,5 +51,6 @@ Released under the MIT license.", VERSION);
         self.version = matches.opt_present("version");
         self.multipled = matches.opt_present("multipled");
         self.reports = matches.opt_strs("report");
+        self.conf = matches.opt_str("conf");
     }
 }
