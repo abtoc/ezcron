@@ -50,7 +50,7 @@ jobs:
         shell: bash
         run: |
           cd target/${{ matrix.job.target }}/release
-          tar zcvf ../../${{ env.PROJECT_NAME }}_${{ matrix.job.target }}.tar.gz ${{ env.PROJECT_NAME }}.toml
+          tar zcvf ../../${{ env.PROJECT_NAME }}_${{ matrix.job.target }}.tar.gz ${{ env.PROJECT_NAME }} ${{ env.PROJECT_NAME }}.toml
       - name: Release
         uses: softprops/action-gh-release@v1
         env:
