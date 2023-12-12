@@ -28,7 +28,8 @@ curl -fsSL https://raw.githubusercontent.com/abtoc/ezcron/main/install.sh | sh -
 ```ezcron```を以下のようにcrontabに指定します。
 
 ```crontab
-* * * * * ezcron --report /path/to/report.sh IDENTIFER -- /path/to/yourscript
+* * * * * /usr/local/bin/ezcron -r /path/to/report.sh job01 -- /path/to/yourscript1
+0 0 * * * /usr/local/bin/ezcron -r /path/to/report.sh job02 -- /usr/bin/find /var/log/ezcron/ -type f -mtime +30 -exec rm {} \;
 ```
 
 ログは```/var/log/ezlog```配下に出力されます。
