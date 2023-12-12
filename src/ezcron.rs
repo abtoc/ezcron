@@ -22,7 +22,7 @@ pub struct EzCron {
 impl EzCron {
     pub fn new(matches: &Matches) -> Self {
         // 設定ファイル読み込み
-        let conf = config::load(matches.opt_str("conf")).unwrap();
+        let conf = config::load(matches.opt_str("config")).unwrap();
 
         // 設定ファイルよりreportersを読み込む
         let mut reporters = match conf.option {

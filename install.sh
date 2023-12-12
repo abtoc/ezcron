@@ -1,6 +1,6 @@
 #!/bin/bash
 
-set -ex
+set -exu
 
 if ! command -v tar >/dev/null; then
 	echo "Error: tar is required to install ezcrpm." 1>&2

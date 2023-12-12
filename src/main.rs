@@ -22,7 +22,7 @@ fn parse_args(args: &mut Vec<String>) -> Result<Option<(Matches, Vec<String>)>, 
     let mut opts = Options::new();
     opts
         .optmulti("r", "report", "reporting the result of process", "SCRIPT")
-        .optopt("c", "conf", "specifies the ezjob configuration file", "FILE")
+        .optopt("c", "config", "specifies the ezjob configuration file\n(default '/etc/ezcron.toml')", "FILE")
         .optflag("m", "multipled", "allows concurrent execution")
         .optflag("", "version", "print version and close")
         .optflag("h", "help", "print this help menu and close");
@@ -146,7 +146,7 @@ mod tests {
         let Ok(result) = result else { panic!("impossible error") };
         assert_eq!(result.is_some(), true);
         let Some((matches, args)) = result else { panic!("impossible error") };
-        assert_eq!(matches.opt_str("conf"), Some("test.conf".to_string()));
+        assert_eq!(matches.opt_str("config"), Some("test.conf".to_string()));
         assert_eq!(matches.opt_strs("report"), vec!["report01.sh".to_string(), "report02.sh".to_string()]);
         assert_eq!(matches.opt_present("multipled"), true);
         assert_eq!(matches.free.len(), 1);
@@ -174,7 +174,7 @@ mod tests {
         let Ok(result) = result else { panic!("impossible error") };
         assert_eq!(result.is_some(), true);
         let Some((matches, args)) = result else { panic!("impossible error") };
-        assert_eq!(matches.opt_str("conf"), Some("test.conf".to_string()));
+        assert_eq!(matches.opt_str("config"), Some("test.conf".to_string()));
         assert_eq!(matches.opt_strs("report"), vec!["report01.sh".to_string(), "report02.sh".to_string()]);
         assert_eq!(matches.opt_present("multipled"), true);
         assert_eq!(matches.free.len(), 1);

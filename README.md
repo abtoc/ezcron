@@ -31,9 +31,12 @@ curl -fsSL https://raw.githubusercontent.com/abtoc/ezcron/main/install.sh | sh -
 ```ezcron```を以下のようにcrontabに指定します。
 
 ```crontab
-* * * * * /usr/local/bin/ezcron -r /path/to/report.sh job01 -- /path/to/yourscript1
-0 0 * * * /usr/local/bin/ezcron -r /path/to/report.sh job02 -- /usr/bin/find /var/log/ezcron/ -type f -mtime +30 -exec rm {} \;
+* * * * * ezcron -r /path/to/report.sh job01 -- /path/to/yourscript1
+0 0 * * * ezcron -r /path/to/report.sh job02 -- find /var/log/ezcron/ -type f -mtime +30 -exec rm {} \;
 ```
+
+> note
+> ↑```/etc/environment```に適切なパスが設定されtいるか確認して下さい。
 
 ログは```/var/log/ezlog```配下に出力されます。
 
@@ -44,8 +47,11 @@ Usage: ezcron [OPTIONS] IDENTIFER -- args
 
 Options:
     -r, --report SCRIPT reporting the result of process
+    -c, --config FILE   specifies the ezjob configuration file (default
+                        '/etc/ezcron.toml')
     -m, --multipled     allows concurrent execution
-    -h, --help          print this help menu
+        --version       print version and close
+    -h, --help          print this help menu and close
 ```
 
 ## 終了時のスクリプトについて
