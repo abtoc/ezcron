@@ -1,4 +1,4 @@
-name: Release
+name: All Tests and Builds
 
 permissions:
   contents: write
@@ -33,6 +33,10 @@ jobs:
           target: ${{ matrix.job.target }}
           override: true
           profile: minimal
+      - name: Test
+        uses: actions-rs/cargo@v1
+        with:
+          command: test
       - name: Build
         uses: actions-rs/cargo@v1
         with:

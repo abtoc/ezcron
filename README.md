@@ -1,6 +1,9 @@
 EzCron
 ====
 
+![test and build](https://github.com/abtoc/ezcron/actions/workflows/release.yaml/badge.svg)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
+
 コマンド、スクリプト用のラッパーです。  
 crontabに加えることによって、crond上で動作するコマンド、スクリプトの管理がしやすくなります。  
 以下の機能があります。
