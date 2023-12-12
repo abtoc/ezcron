@@ -1,0 +1,28 @@
+name: Test
+
+on:
+  push:
+    branches:
+      - main
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v2
+      - name: Extract crate information
+        shell: bash
+        run: |
+          echo "PROJECT_NAME=$(sed -n 's/^name = "\(.*\)"/\1/p' Cargo.toml | head -n1)" >> $GITHUB_ENV
+      - name: Install Rust toolchain
+        uses: actions-rs/toolchain@v1
+        with:
+          toolchain: stable
+          target: x86_64-unknown-linux-gnu
+          override: true
+          profile: minimal
+      - name: Test
+        uses: actions-rs/cargo@v1
+        with:
+          command: test

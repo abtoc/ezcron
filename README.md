@@ -1,10 +1,6 @@
 EzCron
 ====
 
-[![MIT License](https://img.shields.io/github/license/Songmu/horenso)][license]
-
-[license]: https://github.com/abtoc/ezcron/blob/main/LICENSE
-
 コマンド、スクリプト用のラッパーです。  
 crontabに加えることによって、crond上で動作するコマンド、スクリプトの管理がしやすくなります。  
 以下の機能があります。
