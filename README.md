@@ -35,7 +35,6 @@ curl -fsSL https://raw.githubusercontent.com/abtoc/ezcron/main/install.sh | sh -
 0 0 * * * ezcron -r /path/to/report.sh job02 -- find /var/log/ezcron/ -type f -mtime +30 -exec rm {} \;
 ```
 
-> note
 > ↑```/etc/environment```に適切なパスが設定されtいるか確認して下さい。
 
 ログは```/var/log/ezlog```配下に出力されます。
@@ -47,6 +46,7 @@ Usage: ezcron [OPTIONS] IDENTIFER -- args
 
 Options:
     -r, --report SCRIPT reporting the result of process
+    -n, --notify SCRIPT reporting the starting of process
     -c, --config FILE   specifies the ezjob configuration file (default
                         '/etc/ezcron.toml')
     -m, --multipled     allows concurrent execution
@@ -75,6 +75,7 @@ ezcron -r ./notify.sh TEST -- ls -al
   "result": "process terminated code(0)",
   "pid": 629479,
   "log": "var/log/ezcron/20231211-005418-TEST.log",
+  "status": "Finished",
   "start_at": "2023-12-11T00:54:18.063635555+09:00",
   "end_at": "2023-12-11T00:54:18.064889476+09:00"
 }

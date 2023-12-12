@@ -8,14 +8,15 @@ use crate::config;
 use crate::logger::Logger;
 use crate::pid;
 use crate::posix;
-use crate::report::Report;
+use crate::report::{Report, ReportStatus};
 
 #[derive(Debug, Default)]
 pub struct EzCron {
     log_dir: String,
     pid_dir: String,
     identifer: String,
-    reporters: Vec<String>,
+    reports: Vec<String>,
+    notifies: Vec<String>,
     multipled: bool,
 }
 
@@ -24,21 +25,23 @@ impl EzCron {
         // 設定ファイル読み込み
         let conf = config::load(matches.opt_str("config")).unwrap();
 
-        // 設定ファイルよりreportersを読み込む
-        let mut reporters = match conf.option {
-            Some(option) => option.reporters,
-            None => Vec::<String>::new(),
+        // 設定ファイルの[option]を得る
+        let (mut reports, mut notifies) = match conf.option {
+            Some(option) => (option.reports.to_vec(), option.notifies.to_vec()),
+            None => (Vec::<String>::new(), Vec::<String>::new()),
         };
 
         // オプションに制定された分を追加する
-        reporters.append(&mut matches.opt_strs("report"));
+        reports.append(&mut matches.opt_strs("report"));
+        notifies.append(&mut matches.opt_strs("notify"));
 
         // 構造体に値をセット
         Self {
             log_dir: conf.ezcron.log_dir,
             pid_dir: conf.ezcron.pid_dir,
             identifer: matches.free[0].clone(),
-            reporters: reporters,
+            reports: reports,
+            notifies: notifies,
             multipled: matches.opt_present("multipled"),
         }
     }
@@ -83,6 +86,7 @@ impl EzCron {
             Err(err) => { 
                 report.result = format!("process execute error! '{}'", err);
                 report.exitcode = 127;
+                report.status = ReportStatus::Finished;
                 report.end_at = Local::now();
                 logger.write("--------")?;
                 logger.write(&report.result)?;
@@ -93,6 +97,10 @@ impl EzCron {
         // pidファイルの書き込み
         report.pid = popen.pid().unwrap_or(0);
         pid_file.touch(popen.pid().unwrap_or(0))?;
+
+        // 開始を通知する
+        report.result = format!("start program! '{}'", args.join(" "));
+        self.do_notify(&report, logger)?;
     
         // 標準出力、標準エラーをログファイルに書き込み
         let br = BufReader::new(r);
@@ -106,6 +114,7 @@ impl EzCron {
         let Ok(status) = popen.wait() else {
             report.result = "process wait error".to_string();
             report.exitcode = 128;
+            report.status = ReportStatus::Finished;
             report.end_at = Local::now();
             logger.write("--------")?;
             logger.write(&report.result)?;
@@ -130,14 +139,43 @@ impl EzCron {
             },
             _ => (),
         };
+        report.status = ReportStatus::Finished;
         logger.write(&report.result)?;
     
         Ok(Some(report))
     }
+    fn do_notify(&self, report: &Report, logger: &mut Logger) -> Result<(), Box<dyn std::error::Error>> {
+        let json: &str = &serde_json::to_string(&report)?;
+
+        for notify in &self.notifies {
+            logger.write(&format!("starting notify! '{}'", notify))?;
+            logger.write("--------")?;
+ 
+            // プロセスの実行
+            let out = match Exec::shell(notify)
+                .stdin(json)
+                .stdout(Redirection::Pipe)
+                .stderr(Redirection::Merge)
+                .capture() {
+                    Ok(out) => out,
+                    Err(err) => {
+                        logger.write(&format!("process starting error! '{}'", err))?;
+                        continue;
+                    },
+                };
+            logger.write("--------")?;
+
+            // 結果をログに書き込む
+            for (_, line) in out.stdout_str().lines().enumerate() {
+                logger.write(&line)?;
+            }
+        }
+        Ok(())
+    }
     fn do_report(&self, report: &Report, logger: &mut Logger) -> Result<(), Box<dyn std::error::Error>> {
         let json: &str = &serde_json::to_string(&report)?;
 
-        for reporter in &self.reporters {
+        for reporter in &self.reports {
             logger.write("--------")?;
             logger.write(&format!("starting repot! '{}'", reporter))?;
             logger.write("--------")?;
@@ -237,7 +275,7 @@ mod tests {
         assert_eq!(main.log_dir, "var/log/ezcron".to_string());
         assert_eq!(main.pid_dir, "run/ezcron".to_string());
         assert_eq!(main.identifer, "test".to_string());
-        assert_eq!(main.reporters, vec!["report01.sh".to_string(), "report02.sh".to_string()]);
+        assert_eq!(main.reports, vec!["report01.sh".to_string(), "report02.sh".to_string()]);
         assert_eq!(main.multipled, true);
     }
 
@@ -252,6 +290,10 @@ mod tests {
             "report01.sh".to_string(),
             "-r".to_string(),
             "report02.sh".to_string(),
+            "-n".to_string(),
+            "notify01.sh".to_string(),
+            "-n".to_string(),
+            "notify02.sh".to_string(),
             "-m".to_string(),
             "test".to_string(),
             "--".to_string(),
@@ -269,7 +311,8 @@ mod tests {
                 pid_dir: "run/ezcron".to_string(),
             },
             option: Some(ConfigOption {
-                reporters: vec!["report00.sh".to_string()],
+                reports: vec!["report00.sh".to_string()],
+                notifies: vec!["notify00.sh".to_string()],
             }),
         };
         let _test_config_file = TestConfigFile::new("./test_ezcron_option.toml", &test_config);
@@ -277,7 +320,8 @@ mod tests {
         assert_eq!(main.log_dir, "var/log/ezcron".to_string());
         assert_eq!(main.pid_dir, "run/ezcron".to_string());
         assert_eq!(main.identifer, "test".to_string());
-        assert_eq!(main.reporters, vec!["report00.sh".to_string(), "report01.sh".to_string(), "report02.sh".to_string()]);
+        assert_eq!(main.reports, vec!["report00.sh".to_string(), "report01.sh".to_string(), "report02.sh".to_string()]);
+        assert_eq!(main.notifies, vec!["notify00.sh".to_string(), "notify01.sh".to_string(), "notify02.sh".to_string()]);
         assert_eq!(main.multipled, true);
     }
 }

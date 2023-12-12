@@ -22,6 +22,7 @@ fn parse_args(args: &mut Vec<String>) -> Result<Option<(Matches, Vec<String>)>, 
     let mut opts = Options::new();
     opts
         .optmulti("r", "report", "reporting the result of process", "SCRIPT")
+        .optmulti("n", "notify", "reporting the starting of process", "SCRIPT")
         .optopt("c", "config", "specifies the ezjob configuration file\n(default '/etc/ezcron.toml')", "FILE")
         .optflag("m", "multipled", "allows concurrent execution")
         .optflag("", "version", "print version and close")

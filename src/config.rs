@@ -16,7 +16,9 @@ pub struct ConfigEzCron {
 #[derive(Debug, Deserialize, Serialize)]
 pub struct ConfigOption {
     #[serde(default)]
-    pub reporters: Vec<String>,
+    pub reports: Vec<String>,
+    #[serde(default)]
+    pub notifies: Vec<String>,
 }
 
 #[derive(Debug, Deserialize, Serialize)]
@@ -86,14 +88,16 @@ pid_dir="run/ezcron"
 log_dir="var/log/ezcron"
 pid_dir="run/ezcron"
 [option]
-reporters=["test.sh"]
+reports=["report.sh"]
+notifies=["notify.sh"]
 "#);
         let config = config::load(Some(CONFIG_FILE.to_string())).unwrap();
         assert_eq!(config.ezcron.log_dir, "var/log/ezcron".to_string());
         assert_eq!(config.ezcron.pid_dir, "run/ezcron".to_string());
         assert_eq!(config.option.is_some(), true);
         if let Some(option) = config.option {
-            assert_eq!(option.reporters, vec!["test.sh".to_string()]);
+            assert_eq!(option.reports, vec!["report.sh".to_string()]);
+            assert_eq!(option.notifies, vec!["notify.sh".to_string()]);
         }
     }
 }

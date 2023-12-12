@@ -3,6 +3,12 @@ use gethostname::gethostname;
 use serde::Serialize;
 
 #[derive(Debug, Serialize)]
+pub enum ReportStatus {
+    Running,
+    Finished,
+}
+
+#[derive(Debug, Serialize)]
 pub struct Report {
     pub identifer: String,
     pub hostname: String,
@@ -11,6 +17,7 @@ pub struct Report {
     pub exitcode: u32,
     pub result: String,
     pub pid: u32,
+    pub status: ReportStatus,
     pub log: String,
     pub start_at: DateTime<Local>,
     pub end_at: DateTime<Local>, 
@@ -26,6 +33,7 @@ impl Default for Report {
             exitcode: 0,
             result: String::default(),
             pid: 0,
+            status: ReportStatus::Running,
             log: String::default(),
             start_at: Local::now(),
             end_at: DateTime::<Local>::default(),
