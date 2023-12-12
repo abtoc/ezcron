@@ -37,7 +37,7 @@ jobs:
         uses: actions-rs/cargo@v1
         with:
           command: test
-        if: !  ${{ matrix.job.use-cross }}
+        if: ${{ matrix.job.use-cross }} == false
       - name: Build
         uses: actions-rs/cargo@v1
         with:
