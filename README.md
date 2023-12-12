@@ -47,8 +47,8 @@ Usage: ezcron [OPTIONS] IDENTIFER -- args
 Options:
     -r, --report SCRIPT reporting the result of process
     -n, --notify SCRIPT reporting the starting of process
-    -c, --config FILE   specifies the ezjob configuration file (default
-                        '/etc/ezcron.toml')
+    -c, --config FILE   specifies the ezjob configuration file
+                        (default '/etc/ezcron.toml')
     -m, --multipled     allows concurrent execution
         --version       print version and close
     -h, --help          print this help menu and close
@@ -60,7 +60,7 @@ Options:
 指定したスクリプトのSTDINにJSONでデータを渡します。
 
 ```bash
-ezcron -r ./notify.sh TEST -- ls -al
+ezcron -r ./report.sh TEST -- ls -al
 ```
 
 ```json

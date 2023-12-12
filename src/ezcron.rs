@@ -145,57 +145,26 @@ impl EzCron {
         Ok(Some(report))
     }
     fn do_notify(&self, report: &Report, logger: &mut Logger) -> Result<(), Box<dyn std::error::Error>> {
-        let json: &str = &serde_json::to_string(&report)?;
-
         for notify in &self.notifies {
             logger.write(&format!("starting notify! '{}'", notify))?;
             logger.write("--------")?;
  
             // プロセスの実行
-            let out = match Exec::shell(notify)
-                .stdin(json)
-                .stdout(Redirection::Pipe)
-                .stderr(Redirection::Merge)
-                .capture() {
-                    Ok(out) => out,
-                    Err(err) => {
-                        logger.write(&format!("process starting error! '{}'", err))?;
-                        continue;
-                    },
-                };
-            logger.write("--------")?;
-
-            // 結果をログに書き込む
-            for (_, line) in out.stdout_str().lines().enumerate() {
-                logger.write(&line)?;
+            if let Err(_) = execute_report(notify, report, logger) {
+                continue;
             }
         }
         Ok(())
     }
     fn do_report(&self, report: &Report, logger: &mut Logger) -> Result<(), Box<dyn std::error::Error>> {
-        let json: &str = &serde_json::to_string(&report)?;
-
+        logger.write("--------")?;
         for reporter in &self.reports {
-            logger.write("--------")?;
             logger.write(&format!("starting repot! '{}'", reporter))?;
             logger.write("--------")?;
  
             // プロセスの実行
-            let out = match Exec::shell(reporter)
-                .stdin(json)
-                .stdout(Redirection::Pipe)
-                .stderr(Redirection::Merge)
-                .capture() {
-                    Ok(out) => out,
-                    Err(err) => {
-                        logger.write(&format!("process starting error! '{}'", err))?;
-                        continue;
-                    },
-                };
-
-            // 結果をログに書き込む
-            for (_, line) in out.stdout_str().lines().enumerate() {
-                logger.write(&line)?;
+            if let Err(_) = execute_report(reporter, report, logger) {
+                continue;
             }
         }
         Ok(())
@@ -206,6 +175,30 @@ impl EzCron {
         self.do_report(&report, &mut logger)?;
         Ok(())
     }  
+}
+
+fn execute_report(shell: &str, report: &Report, logger: &mut Logger) -> Result<(), Box<dyn std::error::Error>> {
+    let json: &str = &serde_json::to_string(&report)?;
+
+    // プロセスの実行
+    let out = match Exec::shell(shell)
+        .stdin(json)
+        .stdout(Redirection::Pipe)
+        .stderr(Redirection::Merge)
+        .capture() {
+            Ok(out) => out,
+            Err(err) => {
+                logger.write(&format!("process starting error! '{}'", err))?;
+                return Err(Box::new(err));
+            },
+        };
+
+    // 結果をログに書き込む
+    for (_, line) in out.stdout_str().lines().enumerate() {
+        logger.write(&line)?;
+    }
+
+    Ok(())
 }
 
 #[cfg(test)]
