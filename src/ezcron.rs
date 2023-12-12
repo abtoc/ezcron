@@ -21,12 +21,24 @@ pub struct EzCron {
 
 impl EzCron {
     pub fn new(matches: &Matches) -> Self {
+        // 設定ファイル読み込み
         let conf = config::load(matches.opt_str("conf")).unwrap();
+
+        // 設定ファイルよりreportersを読み込む
+        let mut reporters = match conf.option {
+            Some(option) => option.reporters,
+            None => Vec::<String>::new(),
+        };
+
+        // オプションに制定された分を追加する
+        reporters.append(&mut matches.opt_strs("report"));
+
+        // 構造体に値をセット
         Self {
             log_dir: conf.ezcron.log_dir,
             pid_dir: conf.ezcron.pid_dir,
             identifer: matches.free[0].clone(),
-            reporters: matches.opt_strs("report"),
+            reporters: reporters,
             multipled: matches.opt_present("multipled"),
         }
     }
@@ -163,7 +175,7 @@ mod tests {
     use std::fs::File;
     use std::io::Write;
     use std::path::{Path, PathBuf};
-    use crate::config::{Config, ConfigEzCron};
+    use crate::config::{Config, ConfigEzCron, ConfigOption};
     use crate::ezcron::EzCron;
     use crate::parse_args;
 
@@ -192,13 +204,12 @@ mod tests {
     }
 
     #[test]
-    fn test_ezcron_main() {
-        
-        // 一通り設定した場合の正常性を確認する
+    // 一通り設定した場合の正常性を確認する
+    fn test_ezcron_basic() {
         let mut args = vec![
             "program".to_string(),
             "-c".to_string(),
-            "./test_ezcron_main.toml".to_string(),
+            "./test_ezcron_basic.toml".to_string(),
             "-r".to_string(),
             "report01.sh".to_string(),
             "-r".to_string(),
@@ -219,13 +230,54 @@ mod tests {
                 log_dir: "var/log/ezcron".to_string(),
                 pid_dir: "run/ezcron".to_string(),
             },
+            option: None,
         };
-        let _test_config_file = TestConfigFile::new("./test_ezcron_main.toml", &test_config);
+        let _test_config_file = TestConfigFile::new("./test_ezcron_basic.toml", &test_config);
         let main = EzCron::new(&matches);
         assert_eq!(main.log_dir, "var/log/ezcron".to_string());
         assert_eq!(main.pid_dir, "run/ezcron".to_string());
         assert_eq!(main.identifer, "test".to_string());
         assert_eq!(main.reporters, vec!["report01.sh".to_string(), "report02.sh".to_string()]);
+        assert_eq!(main.multipled, true);
+    }
+
+    #[test]
+    // 一通り設定した場合の正常性を確認する
+    fn test_ezcron_option() {
+        let mut args = vec![
+            "program".to_string(),
+            "-c".to_string(),
+            "./test_ezcron_option.toml".to_string(),
+            "-r".to_string(),
+            "report01.sh".to_string(),
+            "-r".to_string(),
+            "report02.sh".to_string(),
+            "-m".to_string(),
+            "test".to_string(),
+            "--".to_string(),
+            "ls".to_string(),
+            "-al".to_string(),
+        ];
+        let result = parse_args(&mut args);
+        assert_eq!(result.is_ok(), true);
+        let Ok(result) = result else { panic!("impossible error") };
+        assert_eq!(result.is_some(), true);
+        let Some((matches, _)) = result else { panic!("impossible error") };
+        let test_config = Config {
+            ezcron: ConfigEzCron {
+                log_dir: "var/log/ezcron".to_string(),
+                pid_dir: "run/ezcron".to_string(),
+            },
+            option: Some(ConfigOption {
+                reporters: vec!["report00.sh".to_string()],
+            }),
+        };
+        let _test_config_file = TestConfigFile::new("./test_ezcron_option.toml", &test_config);
+        let main = EzCron::new(&matches);
+        assert_eq!(main.log_dir, "var/log/ezcron".to_string());
+        assert_eq!(main.pid_dir, "run/ezcron".to_string());
+        assert_eq!(main.identifer, "test".to_string());
+        assert_eq!(main.reporters, vec!["report00.sh".to_string(), "report01.sh".to_string(), "report02.sh".to_string()]);
         assert_eq!(main.multipled, true);
     }
 }
