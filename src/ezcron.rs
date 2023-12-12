@@ -53,10 +53,6 @@ impl EzCron {
             return Ok(None);
         }
     
-        // プロセス開始をログに記録する
-        logger.write(&format!("start program! '{}'", args.join(" ")))?;
-        logger.write("--------")?;
-    
         // レポートの作成
         let mut report = Report {
             identifer: self.identifer.to_string(),
@@ -102,6 +98,10 @@ impl EzCron {
         report.result = format!("start program! '{}'", args.join(" "));
         self.do_notify(&report, logger)?;
     
+        // プロセス開始をログに記録する
+        logger.write(&report.result)?;
+        logger.write("--------")?;
+    
         // 標準出力、標準エラーをログファイルに書き込み
         let br = BufReader::new(r);
         for line in br.lines() {
@@ -145,7 +145,12 @@ impl EzCron {
         Ok(Some(report))
     }
     fn do_notify(&self, report: &Report, logger: &mut Logger) -> Result<(), Box<dyn std::error::Error>> {
+        let mut doing = false;
         for notify in &self.notifies {
+            if doing {
+                logger.write("--------")?;
+            }
+            doing = true;
             logger.write(&format!("starting notify! '{}'", notify))?;
             logger.write("--------")?;
  
@@ -154,11 +159,14 @@ impl EzCron {
                 continue;
             }
         }
+        if doing {
+            logger.write("--------")?;
+        }
         Ok(())
     }
     fn do_report(&self, report: &Report, logger: &mut Logger) -> Result<(), Box<dyn std::error::Error>> {
-        logger.write("--------")?;
         for reporter in &self.reports {
+            logger.write("--------")?;
             logger.write(&format!("starting repot! '{}'", reporter))?;
             logger.write("--------")?;
  
