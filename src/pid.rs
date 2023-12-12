@@ -42,3 +42,25 @@ impl Drop for Pid {
     }
 }
 
+#[cfg(test)]
+mod tests {
+    use std::path::Path;
+    use crate::pid::Pid;
+   
+    #[test]
+    fn test_pid() {
+        const PID_DIR: &str = "./";
+        const IDENTIFER: &str = "test_pid";
+
+        let path = Path::new(PID_DIR)
+            .join(format!("{}.pid", IDENTIFER));
+        {
+            let mut pid = Pid::new(IDENTIFER, false, PID_DIR);
+            pid.touch(100).unwrap();
+            assert_eq!(pid.path, Box::new(path.clone()));
+            assert_eq!(pid.is_exists(), true);
+            assert_eq!(path.is_file(), true);
+        }
+        assert_eq!(path.is_file(), false);
+    }
+}

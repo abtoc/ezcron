@@ -77,6 +77,68 @@ fn main() {
 
     //  実行する
     let main = EzCron::new(&matches);
-    main.run(&args).unwrap();
+    if let Err(err) = main.run(&args) {
+        println!("ezcron error: '{}", err);
+        process::exit(2);
+    }
 }
 
+#[cfg(test)]
+mod tests {
+    use crate::parse_args;
+
+    #[test]
+    fn test_parse_args() {
+        // 何も指定しない場合はNoneが変える
+        let mut args = vec![
+            "program".to_string(),
+        ];
+        let result = parse_args(&mut args);
+        assert_eq!(result.is_ok(), true);
+        let Ok(result) = result else { panic!("impossible error") };
+        assert_eq!(result.is_none(), true);
+        // "help"を指定した場合はNoneが変える
+        let mut args = vec![
+            "program".to_string(),
+            "-h".to_string(),
+        ];
+        let result = parse_args(&mut args);
+        assert_eq!(result.is_ok(), true);
+        let Ok(result) = result else { panic!("impossible error") };
+        assert_eq!(result.is_none(), true);
+        // "version"を指定した場合はNoneが変える
+        let mut args = vec![
+            "program".to_string(),
+            "--version".to_string(),
+        ];
+        let result = parse_args(&mut args);
+        assert_eq!(result.is_ok(), true);
+        let Ok(result) = result else { panic!("impossible error") };
+        assert_eq!(result.is_none(), true);
+        // 一通り設定した場合の正常性を確認する
+        let mut args = vec![
+            "program".to_string(),
+            "-c".to_string(),
+            "test.conf".to_string(),
+            "-r".to_string(),
+            "report01.sh".to_string(),
+            "-r".to_string(),
+            "report02.sh".to_string(),
+            "-m".to_string(),
+            "test".to_string(),
+            "--".to_string(),
+            "ls".to_string(),
+            "-al".to_string(),
+        ];
+        let result = parse_args(&mut args);
+        assert_eq!(result.is_ok(), true);
+        let Ok(result) = result else { panic!("impossible error") };
+        assert_eq!(result.is_some(), true);
+        let Some((matches, args)) = result else { panic!("impossible error") };
+        assert_eq!(matches.opt_str("conf"), Some("test.conf".to_string()));
+        assert_eq!(matches.opt_strs("report"), vec!["report01.sh".to_string(), "report02.sh".to_string()]);
+        assert_eq!(matches.opt_present("multipled"), true);
+        assert_eq!(matches.free.len(), 1);
+        assert_eq!(args, vec!["ls".to_string(), "-al".to_string()]);
+    }
+}

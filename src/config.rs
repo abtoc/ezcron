@@ -1,5 +1,5 @@
 use std::fs;
-use serde::Deserialize;
+use serde::{Deserialize, Serialize};
 
 #[cfg(debug_assertions)]
 const CONFIG_FILE: &str = "./etc/ezcron.toml";
@@ -7,13 +7,13 @@ const CONFIG_FILE: &str = "./etc/ezcron.toml";
 const CONFIG_FILE: &str = "/etc/ezcron.toml";
 
 
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Deserialize, Serialize)]
 pub struct ConfigEzCron {
     pub log_dir: String,
     pub pid_dir: String,
 }
 
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Deserialize, Serialize)]
 pub struct Config {
     pub ezcron: ConfigEzCron,
 }

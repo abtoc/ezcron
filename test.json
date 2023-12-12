@@ -1,1 +1,0 @@
-{"identifer":"TEST","hostname":"pc01","command":"ls -al","args":["ls","-al"],"exitcode":0,"result":"process terminated code(0)","pid":1963667,"log":"./var/log/ezcron/20231212-040304-TEST.log","start_at":"2023-12-12T04:03:04.404023868+09:00","end_at":"2023-12-12T04:03:04.405474220+09:00"}

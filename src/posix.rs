@@ -14,3 +14,19 @@ pub fn pipe() -> std::io::Result<(File, File)> {
     Ok(unsafe { (File::from_raw_fd(fds[0]), File::from_raw_fd(fds[1])) })
 }
 
+
+#[cfg(test)]
+mod tests {
+    use std::io::{Read, Write};
+    use crate::posix;
+
+    #[test]
+    pub fn test_posix_pipe() {
+        let (mut r, mut w) = posix::pipe().unwrap();
+        w.write("TEST".as_bytes()).unwrap();
+        drop(w);
+        let mut buf = Vec::new();
+        r.read_to_end(&mut buf).unwrap();
+        assert_eq!(buf, vec!['T' as u8, 'E' as u8, 'S' as u8, 'T' as u8]);
+    }
+}

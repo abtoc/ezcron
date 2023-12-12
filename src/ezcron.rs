@@ -158,3 +158,74 @@ impl EzCron {
     }  
 }
 
+#[cfg(test)]
+mod tests {
+    use std::fs::File;
+    use std::io::Write;
+    use std::path::{Path, PathBuf};
+    use crate::config::{Config, ConfigEzCron};
+    use crate::ezcron::EzCron;
+    use crate::parse_args;
+
+    struct TestConfigFile {
+        path: Box<PathBuf>,
+    }
+
+    impl TestConfigFile {
+        fn new(path: &str, config: &Config) -> Self {
+            let path = Path::new(path);
+            let mut fs = File::create(path).unwrap();
+            let toml = toml::to_string(&config).unwrap();
+            fs.write(toml.as_bytes()).unwrap();
+            Self {
+                path: Box::new(path.to_path_buf()),
+            }
+        }
+    }
+
+    impl Drop for TestConfigFile {
+        fn drop(&mut self) {
+            if self.path.is_file() {
+                std::fs::remove_file(self.path.as_path()).unwrap();
+            }
+        }
+    }
+
+    #[test]
+    fn test_ezcron_main() {
+        
+        // 一通り設定した場合の正常性を確認する
+        let mut args = vec![
+            "program".to_string(),
+            "-c".to_string(),
+            "./test_ezcron_main.toml".to_string(),
+            "-r".to_string(),
+            "report01.sh".to_string(),
+            "-r".to_string(),
+            "report02.sh".to_string(),
+            "-m".to_string(),
+            "test".to_string(),
+            "--".to_string(),
+            "ls".to_string(),
+            "-al".to_string(),
+        ];
+        let result = parse_args(&mut args);
+        assert_eq!(result.is_ok(), true);
+        let Ok(result) = result else { panic!("impossible error") };
+        assert_eq!(result.is_some(), true);
+        let Some((matches, _)) = result else { panic!("impossible error") };
+        let test_config = Config {
+            ezcron: ConfigEzCron {
+                log_dir: "var/log/ezcron".to_string(),
+                pid_dir: "run/ezcron".to_string(),
+            },
+        };
+        let _test_config_file = TestConfigFile::new("./test_ezcron_main.toml", &test_config);
+        let main = EzCron::new(&matches);
+        assert_eq!(main.log_dir, "var/log/ezcron".to_string());
+        assert_eq!(main.pid_dir, "run/ezcron".to_string());
+        assert_eq!(main.identifer, "test".to_string());
+        assert_eq!(main.reporters, vec!["report01.sh".to_string(), "report02.sh".to_string()]);
+        assert_eq!(main.multipled, true);
+    }
+}
