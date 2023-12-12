@@ -1,0 +1,2 @@
+cat > test.json
+

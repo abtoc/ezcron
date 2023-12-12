@@ -1,263 +1,233 @@
 pub mod config;
 pub mod logger;
-pub mod options;
+pub mod pid;
+pub mod posix;
+pub mod report;
 
 use std::env;
-use std::fs::File;
 use std::ffi::OsString;
-use std::io::{Write, BufRead, BufReader, BufWriter};
-use std::os::fd::FromRawFd;
-use std::path::{Path, PathBuf};
-use chrono::{DateTime, Local};
-use gethostname::gethostname;
-use serde::Serialize;
-use subprocess::{Exec, ExitStatus, NullFile, Popen, PopenConfig, Redirection};
-use config::Config;
+use std::io::{BufRead, BufReader};
+use std::process;
+use getopts::{Options, Matches};
+use chrono::Local;
+use subprocess::{Exec, ExitStatus, Popen, PopenConfig, Redirection};
 use logger::Logger;
-use options::Options;
+use report::Report;
 
-fn check_err<T: Ord + Default>(num: T) -> std::io::Result<T> {
-    if num < T::default() {
-        return Err(std::io::Error::last_os_error());
-    }
-    Ok(num)
-}
-
-fn pipe() -> std::io::Result<(File, File)> {
-    let mut fds = [0 as libc::c_int; 2];
-    check_err(unsafe { libc::pipe(fds.as_mut_ptr()) })?;
-    Ok(unsafe { (File::from_raw_fd(fds[0]), File::from_raw_fd(fds[1])) })
-}
-
-#[derive(Debug, Default, Serialize)]
-struct Report {
+#[derive(Debug, Default)]
+struct EzCron {
+    log_dir: String,
+    pid_dir: String,
     identifer: String,
-    hostname: OsString,
-    command: String,
-    args: Vec<String>,
-    exitcode: u32,
-    result: String,
-    pid: u32,
-    log: String,
-    start_at: DateTime<Local>,
-    end_at: DateTime<Local>, 
-}
-
-struct Pid {
+    reporters: Vec<String>,
     multipled: bool,
-    path: Box<PathBuf>,
-    pid: u32,
 }
 
-impl Pid {
-    fn new(identifer: &str, multipled: bool, pid_dir: &str) -> Self {
-        let path = Path::new(pid_dir)
-            .join(format!("{}.pid", identifer));
+impl EzCron {
+    fn new(matches: &Matches) -> Self {
+        let conf = config::load(matches.opt_str("conf")).unwrap();
         Self {
-            multipled: multipled,
-            path: Box::new(path),
-            pid: 0,
+            log_dir: conf.ezcron.log_dir,
+            pid_dir: conf.ezcron.pid_dir,
+            identifer: matches.free[0].clone(),
+            reporters: matches.opt_strs("report"),
+            multipled: matches.opt_present("multipled"),
         }
     }
-    fn is_exists(&self) -> bool {
-        !self.multipled && self.path.is_file()
+    fn do_exec(&self, args: &[String], logger: &mut Logger) -> Result<Option<Report>, Box<dyn std::error::Error>> {
+        // pidファイルの作成
+        let mut pid_file = pid::Pid::new(&self.identifer, self.multipled, &self.pid_dir);
+        if pid_file.is_exists() {
+            // 同時実行を許可していなく、既に実行済であればリターン
+            return Ok(None);
+        }
+    
+        // ログファイルの作成
+        logger.write(&format!("start program! '{}'", args.join(" ")))?;
+        logger.write("--------")?;
+    
+        // レポートの作成
+        let mut report = Report {
+            identifer: self.identifer.to_string(),
+            command: args.join(" ").clone(),
+            args: args.to_vec(),
+            log: logger.path.clone(),
+            ..Default::default()
+        };
+    
+        // パイプの作成
+        let (r, w) = posix::pipe()?;
+    
+        // 引数の設定
+        let argv: Vec<OsString> = args.iter().map(|arg| arg.into()).collect();
+    
+        // コンフィグの設定
+        let config = PopenConfig {
+            stdout: Redirection::File(w.try_clone()?),
+            stderr: Redirection::File(w.try_clone()?),
+            ..Default::default()
+        };
+        drop(w);
+    
+        // プロセスの実行
+        let mut popen = match Popen::create(&argv, config) {
+            Ok(popen) => popen,
+            Err(err) => { 
+                report.result = format!("process execute error! '{}'", err);
+                report.exitcode = 127;
+                report.end_at = Local::now();
+                logger.write("--------")?;
+                logger.write(&report.result)?;
+                return Ok(Some(report));
+            },
+        };
+    
+        // pidファイルの書き込み
+        report.pid = popen.pid().unwrap_or(0);
+        pid_file.touch(popen.pid().unwrap_or(0))?;
+    
+        // 標準出力、標準エラーをログファイルに書き込み
+        let br = BufReader::new(r);
+        for line in br.lines() {
+            if let Ok(line) = line {
+                logger.write(&line)?;
+            }
+        }
+    
+        // プロセス終了まで待つ
+        let Ok(status) = popen.wait() else {
+            report.result = "process wait error".to_string();
+            report.exitcode = 128;
+            report.end_at = Local::now();
+            logger.write("--------")?;
+            logger.write(&report.result)?;
+            return Ok(Some(report));
+        };
+    
+        // 終了処理
+        logger.write("--------")?;
+        report.end_at = Local::now();
+        match status {
+            ExitStatus::Exited(code) => {
+                report.result = format!("process terminated code({})", code);
+                report.exitcode = code;
+            },
+            ExitStatus::Signaled(sig) => {
+                report.result = format!("process recieve signal({})", sig);
+                report.exitcode = sig as u32 + 128;
+            },
+            ExitStatus::Other(code) => {
+                report.result = format!("process terminated with no occurrence({})", code);
+                report.exitcode = code as u32;
+            },
+            _ => (),
+        };
+        logger.write(&report.result)?;
+    
+        Ok(Some(report))
     }
-    fn touch(&mut self, pid: u32) -> std::io::Result<()> {
-        self.pid = pid;
-        if !self.multipled {
-            let mut bw = File::create(self.path.as_path())
-                .map(|fs| BufWriter::new(fs))
-                .unwrap();
-            let pid = format!("{}", pid);
-            bw.write(pid.as_bytes()).unwrap();
+    fn do_report(&self, report: &Report, logger: &mut Logger) -> Result<(), Box<dyn std::error::Error>> {
+        let json: &str = &serde_json::to_string(&report)?;
+
+        for reporter in &self.reporters {
+            logger.write("--------")?;
+            logger.write(&format!("starting repot! '{}'", reporter))?;
+            logger.write("--------")?;
+ 
+            // プロセスの実行
+            let out = match Exec::shell(reporter)
+                .stdin(json)
+                .stdout(Redirection::Pipe)
+                .stderr(Redirection::Merge)
+                .capture() {
+                    Ok(out) => out,
+                    Err(err) => {
+                        logger.write(&format!("process starting error! '{}'", err))?;
+                        continue;
+                    },
+                };
+
+            // 結果をログに書き込む
+            for (_, line) in out.stdout_str().lines().enumerate() {
+                logger.write(&line)?;
+            }
         }
         Ok(())
     }
+    fn run(&self, args: &[String]) -> Result<(), Box<dyn std::error::Error>> {
+        let mut logger = Logger::new(&self.identifer, &self.log_dir)?;
+        let Some(report) = self.do_exec(&args, &mut logger)? else { return Ok(()); };
+        self.do_report(&report, &mut logger)?;
+        Ok(())
+    }  
 }
 
-impl Drop for Pid {
-    fn drop(&mut self) {
-        if self.pid > 0 && self.path.is_file() {
-            std::fs::remove_file(self.path.as_path()).unwrap();
-        }
-    }
+fn print_usage(program: &str, opts: &Options) {
+    let msg = format!("Usage: {} [OPTIONS] IDENTIFER -- args", program);
+    print!("{}", opts.usage(&msg));
 }
 
-fn do_exec(args: &[String], opts: &Options, config: &Config) -> Option<Report> {
-    let identifer = opts.identifer.clone().unwrap();
-    let multipled = opts.multipled;
+fn parse_args(args: &mut Vec<String>) -> Result<Option<(Matches, Vec<String>)>, getopts::Fail> {
+    // プログラム名を得る
+    let program = args.remove(0);
+    // オプションを設定する
+    let mut opts = Options::new();
+    opts
+        .optmulti("r", "report", "reporting the result of process", "SCRIPT")
+        .optopt("c", "conf", "specifies the ezjob configuration file", "FILE")
+        .optflag("m", "multipled", "allows concurrent execution")
+        .optflag("", "version", "print version and close")
+        .optflag("h", "help", "print this help menu and close");
 
-    // pidファイルの作成
-    let mut pid_file = Pid::new(&identifer, multipled, &config.ezcron.pid_dir);
-    if pid_file.is_exists() {
-        // 同時実行を許可していなく、既に実行済であればリターン
-        return None;
-    }
-
-    // ログファイルの作成
-    let mut logger = Logger::new(
-            &opts.identifer.clone().unwrap(),
-            &config.ezcron.log_dir)
-        .unwrap();
-    logger.write(&format!("start program! '{}'", args.join(" "))).unwrap();
-    logger.write("--------").unwrap();
-
-    // レポートの作成
-    let mut report = Report {
-        identifer: identifer.to_string(),
-        hostname: gethostname(),
-        command: args.join(" ").clone(),
-        args: args.to_vec(),
-        log: logger.path.clone(),
-        ..Default::default()
-    };
-
-    // 開始時刻の記録
-    report.start_at = Local::now();
-
-    // パイプの作成
-    let (r, w) = pipe().unwrap();
-
-    // 引数の設定
-    let argv: Vec<OsString> = args.iter().map(|arg| arg.into()).collect();
-
-    // コンフィグの設定
-    let config = PopenConfig {
-        stdout: Redirection::File(w.try_clone().unwrap()),
-        stderr: Redirection::File(w.try_clone().unwrap()),
-        ..Default::default()
-    };
-    drop(w);
-
-    // プロセスの実行
-    let mut popen = match Popen::create(&argv, config) {
-        Ok(popen) => popen,
-        Err(err) => { 
-            report.result = format!("process execute error! '{}'", err);
-            report.exitcode = 127;
-            report.end_at = Local::now();
-            logger.write("--------").unwrap();
-            logger.write(&report.result).unwrap();
-            return Some(report);
-        },
-    };
-
-    // pidファイルの書き込み
-    report.pid = popen.pid().unwrap_or(0);
-    pid_file.touch(popen.pid().unwrap_or(0)).unwrap();
-
-    // 標準出力、標準エラーをログファイルに書き込み
-    let br = BufReader::new(r);
-    for line in br.lines() {
-        if let Ok(line) = line {
-            logger.write(&line).unwrap();
-        }
-    }
-
-    // プロセス終了まで待つ
-    let Ok(status) = popen.wait() else {
-        report.result = "process wait error".to_string();
-        report.exitcode = 128;
-        report.end_at = Local::now();
-        logger.write("--------").unwrap();
-        logger.write(&report.result).unwrap();
-        return Some(report);
-    };
-
-    // 終了処理
-    logger.write("--------").unwrap();
-    report.end_at = Local::now();
-    match status {
-        ExitStatus::Exited(code) => {
-            report.result = format!("process terminated code({})", code);
-            report.exitcode = code;
-            logger.write(&report.result).unwrap();
-        },
-        ExitStatus::Signaled(sig) => {
-            report.result = format!("process recieve signal({})", sig);
-            report.exitcode = sig as u32 + 128;
-            logger.write(&report.result).unwrap();
-        },
-        ExitStatus::Other(code) => {
-            report.result = format!("process terminated with no occurrence({})", code);
-            report.exitcode = code as u32;
-            logger.write(&report.result).unwrap();
-        },
-        _ => (),
-    };
-
-    Some(report)
-}
-
-fn do_report(report: &Report, reporters: &Vec<String>) {
-    let json: &str = &serde_json::to_string(&report).unwrap();
-
-    for reporter in reporters {
-        let _ =Exec::shell(reporter)
-            .stdin(json)
-            .stdout(NullFile)
-            .capture()
-            .unwrap();
-    }
-}
-
-fn main() {
-    // 引数を変数に納める
-    let args: Vec<String> = env::args().collect();
-    let program = args[0].clone();
-
-    // オプションの定義を行う
-    let mut opts = Options::new(&program);
-
-    // オプションの指定が無ければusageを表示して終了する
-    if args.len() <= 1 {
-        opts.print_usage();
-        return;
-    }
-
-    // 引数"--"の位置をposに格納する
+    // 引数の"--"を取得する
     let pos = match args.iter().position(|arg| arg == "--") {
-        Some(pos) => pos,
+        Some(pos) => pos + 1,
         None => args.len(),
     };
 
-    // オプション解析
-    opts.parse(&args[1..pos]);
+    // 引数を解析する
+    let matches = opts.parse(&args[0..pos])?;
 
-    // ヘルプ表示
-    if opts.help {
-        opts.print_usage();
-        return;
+    // 引数が"help"であればUsageを表示する
+    if matches.opt_present("help") {
+        print_usage(&program, &opts);
+        return Ok(None);
     }
 
-    // バージョン表示
-    if opts.version {
-        opts.print_version();
-        return;
+    // 引数が"version"ならバージョン情報を表示する
+    if matches.opt_present("version") {
+        const VERSION: &'static str = env!("CARGO_PKG_VERSION");
+        let msg = format!("ezjob {}
+Copyright (C) 2023-2023 Abtoc All Rights Reserved.
+Released under the MIT license.", VERSION);
+         println!("{}", msg);
+         return Ok(None);
+        }
+
+    // 引数必須の内容が無ければUsageを表示する
+    if matches.free.len() == 0 || pos >= args.len() {
+        print_usage(&program, &opts);
+        return Ok(None);
     }
 
-    // IDを取得する
-    if opts.identifer == None {
-        opts.print_usage();
-        return;
-    }
+    Ok(Some((matches, args[pos..].to_vec())))
+} 
 
-    // 引数"--"以降に無いも指定が無ければ終了する
-    if args.len() <= pos {
-        opts.print_usage();
-        return;
-    }
+fn main() {
+    // 引数をチェックする
+    let mut args: Vec<String> = env::args().collect();
+    let Some((matches, args)) = (match parse_args(&mut args) {
+        Ok(result) => result,
+        Err(err) => {
+            println!("{}", err);
+            process::exit(2);
+        },
+    }) else {
+        process::exit(2);
+    };
 
-    // 設定ファイル読み込み
-    let config = config::load(opts.conf.clone()).unwrap();
-
-    // プログラムの実行
-    let report = do_exec(&args[pos+1..], &opts, &config).unwrap();
-
-    // レポート出力
-    do_report(&report, &opts.reports);
+    //  実行する
+    let main = EzCron::new(&matches);
+    main.run(&args).unwrap();
 }
 
-#[cfg(test)]
-mod tests {
-}
