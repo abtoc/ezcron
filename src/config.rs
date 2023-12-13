@@ -4,7 +4,7 @@ use serde::{Deserialize, Serialize};
 #[cfg(debug_assertions)]
 const CONFIG_FILE: &str = "./etc/ezcron.toml";
 #[cfg(not(debug_assertions))]
-const CONFIG_FILE: &str = "/etc/ezcron.toml";
+const CONFIG_FILE: &str = "/etc/ezcron/ezcron.toml";
 
 
 #[derive(Debug, Deserialize, Serialize)]

@@ -46,10 +46,7 @@ jobs:
       - name: MakeConfig
         shell: bash
         run: |
-          cd target/${{ matrix.job.target }}/release
-          echo "[ezcron]" > ${{ env.PROJECT_NAME }}.toml
-          echo "log_dir=\"/var/log/ezcron\"" >> ${{ env.PROJECT_NAME }}.toml
-          echo "pid_dir=\"/run/ezcron\"" >> ${{ env.PROJECT_NAME }}.toml
+          cp examples/ezcron.toml target/${{ matrix.job.target }}/release/
       - name: Archive
         shell: bash
         run: |

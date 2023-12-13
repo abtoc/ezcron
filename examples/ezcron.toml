@@ -1,0 +1,7 @@
+[ezcron]
+log_dir="./var/log/ezcron"
+pid_dir="./run/ezcron"
+
+#[option]
+#reports=["/path/to/report.sh"]
+#notifies=["/path/to/notify.sh"]

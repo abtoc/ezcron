@@ -24,16 +24,10 @@ else
 fi
 
 curl --fail --location --progress-bar --output /tmp/ezcron.tar.gz ${ezjob_url}
-cd /tmp
-sudo tar zxf ezcron.tar.gz -C /tmp
-sudo cp ezcron /usr/local/bin/
-if [ ! -f /etc/ezcron.toml ]; then
-    sudo cp ezcron.toml /etc/
-fi
-sudo rm /tmp/ezcron
-sudo rm /tmp/ezcron.toml
-sudo rm /tmp/ezcron.tar.gz
 
+if [ ! -d /etc/ezcron ]; then
+    sudo mkdir /etc/ezcron
+fi
 if [ ! -d /var/log/ezcron ]; then
     sudo mkdir /var/log/ezcron
 fi
@@ -41,5 +35,16 @@ fi
 if [ ! -d /run/ezcron ]; then
     sudo mkdir /run/ezcron
 fi
+
+cd /tmp
+sudo tar zxf ezcron.tar.gz -C /tmp
+sudo cp ezcron /usr/local/bin/
+if [ ! -f /etc/ezcron/ezcron.toml ]; then
+    sudo cp ezcron.toml /etc/ezcron
+fi
+sudo rm /tmp/ezcron
+sudo rm /tmp/ezcron.toml
+sudo rm /tmp/ezcron.tar.gz
+
 
 echo "Install completed"

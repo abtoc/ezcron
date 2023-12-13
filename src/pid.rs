@@ -1,5 +1,5 @@
 use std::fs::File;
-use std::io::{Write, BufWriter};
+use std::io::Write;
 use std::path::{Path, PathBuf};
 
 pub struct Pid {
@@ -24,11 +24,9 @@ impl Pid {
     pub fn touch(&mut self, pid: u32) -> std::io::Result<()> {
         self.pid = pid;
         if !self.multipled {
-            let mut bw = File::create(self.path.as_path())
-                .map(|fs| BufWriter::new(fs))
-                .unwrap();
+            let mut fs = File::create(self.path.as_path())?;
             let pid = format!("{}", pid);
-            bw.write(pid.as_bytes()).unwrap();
+            fs.write(pid.as_bytes()).unwrap();
         }
         Ok(())
     }
