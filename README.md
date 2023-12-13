@@ -66,6 +66,7 @@ ezcron -r ./report.sh TEST -- ls -al
 ```json
 {
   "identifer": "TEST",
+  "uuid": "eccc87be-8141-40af-870c-c53b0bff6c11",
   "command": "ls -al",
   "args": [
     "ls",

@@ -1,6 +1,7 @@
 use chrono::{DateTime, Local};
 use gethostname::gethostname;
 use serde::Serialize;
+use uuid::Uuid;
 
 #[derive(Debug, Serialize)]
 pub enum ReportStatus {
@@ -11,6 +12,7 @@ pub enum ReportStatus {
 #[derive(Debug, Serialize)]
 pub struct Report {
     pub identifer: String,
+    pub uuid: Uuid,
     pub hostname: String,
     pub command: String,
     pub args: Vec<String>,
@@ -27,6 +29,7 @@ impl Default for Report {
     fn default() -> Self {
         Self {
             identifer: String::default(),
+            uuid: Uuid::new_v4(),
             hostname: gethostname().into_string().unwrap(),
             command: String::default(),
             args: Vec::<String>::default(),
