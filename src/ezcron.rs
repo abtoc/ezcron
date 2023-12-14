@@ -245,20 +245,15 @@ mod tests {
     #[test]
     // 一通り設定した場合の正常性を確認する
     fn test_ezcron_basic() {
-        let mut args = vec![
-            "program".to_string(),
-            "-c".to_string(),
-            "./test_ezcron_basic.toml".to_string(),
-            "-r".to_string(),
-            "report01.sh".to_string(),
-            "-r".to_string(),
-            "report02.sh".to_string(),
-            "-m".to_string(),
-            "test".to_string(),
-            "--".to_string(),
-            "ls".to_string(),
-            "-al".to_string(),
-        ];
+        let mut args = vec!["program",
+            "-c", "./test_ezcron_basic.toml",
+            "-r", "report01.sh",
+            "-r", "report02.sh",
+            "-n", "notify01.sh",
+            "-n", "notify02.sh",
+            "-m",
+            "test", "--", "ls", "-al"]
+            .iter().map(|&s| s.to_string()).collect();
         let result = parse_args(&mut args);
         assert_eq!(result.is_ok(), true);
         let Ok(result) = result else { panic!("impossible error") };
@@ -276,31 +271,20 @@ mod tests {
         assert_eq!(main.log_dir, "var/log/ezcron".to_string());
         assert_eq!(main.pid_dir, "run/ezcron".to_string());
         assert_eq!(main.identifer, "test".to_string());
-        assert_eq!(main.reports, vec!["report01.sh".to_string(), "report02.sh".to_string()]);
+        assert_eq!(main.reports, vec!["report01.sh", "report02.sh"]);
         assert_eq!(main.multipled, true);
     }
 
     #[test]
     // 一通り設定した場合の正常性を確認する
     fn test_ezcron_option() {
-        let mut args = vec![
-            "program".to_string(),
-            "-c".to_string(),
-            "./test_ezcron_option.toml".to_string(),
-            "-r".to_string(),
-            "report01.sh".to_string(),
-            "-r".to_string(),
-            "report02.sh".to_string(),
-            "-n".to_string(),
-            "notify01.sh".to_string(),
-            "-n".to_string(),
-            "notify02.sh".to_string(),
-            "-m".to_string(),
-            "test".to_string(),
-            "--".to_string(),
-            "ls".to_string(),
-            "-al".to_string(),
-        ];
+        let mut args = vec!["program",
+            "-c", "./test_ezcron_option.toml",
+            "-r", "report01.sh", "-r", "report02.sh",
+            "-n", "notify01.sh", "-n", "notify02.sh",
+            "-m",
+            "test", "--", "ls", "-al"
+        ].iter().map(|&s| s.to_string()).collect();
         let result = parse_args(&mut args);
         assert_eq!(result.is_ok(), true);
         let Ok(result) = result else { panic!("impossible error") };
@@ -321,8 +305,8 @@ mod tests {
         assert_eq!(main.log_dir, "var/log/ezcron".to_string());
         assert_eq!(main.pid_dir, "run/ezcron".to_string());
         assert_eq!(main.identifer, "test".to_string());
-        assert_eq!(main.reports, vec!["report00.sh".to_string(), "report01.sh".to_string(), "report02.sh".to_string()]);
-        assert_eq!(main.notifies, vec!["notify00.sh".to_string(), "notify01.sh".to_string(), "notify02.sh".to_string()]);
+        assert_eq!(main.reports, vec!["report00.sh", "report01.sh", "report02.sh"]);
+        assert_eq!(main.notifies, vec!["notify00.sh", "notify01.sh", "notify02.sh"]);
         assert_eq!(main.multipled, true);
     }
 }

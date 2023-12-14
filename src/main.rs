@@ -91,9 +91,7 @@ mod tests {
     #[test]
     fn test_parse_args_none() {
         // 何も指定しない場合はNoneが変える
-        let mut args = vec![
-            "program".to_string(),
-        ];
+        let mut args = vec!["program"].iter().map(|&s| s.to_string()).collect();
         let result = parse_args(&mut args);
         assert_eq!(result.is_ok(), true);
         let Ok(result) = result else { panic!("impossible error") };
@@ -103,10 +101,7 @@ mod tests {
     #[test]
     fn test_parse_args_help() {
        // "help"を指定した場合はNoneが変える
-        let mut args = vec![
-            "program".to_string(),
-            "-h".to_string(),
-        ];
+        let mut args = vec!["program", "-h"].iter().map(|&s| s.to_string()).collect();
         let result = parse_args(&mut args);
         assert_eq!(result.is_ok(), true);
         let Ok(result) = result else { panic!("impossible error") };
@@ -116,10 +111,7 @@ mod tests {
     #[test]
     fn test_parse_args_version() {
         // "version"を指定した場合はNoneが変える
-        let mut args = vec![
-            "program".to_string(),
-            "--version".to_string(),
-        ];
+        let mut args = vec!["program", "--version"].iter().map(|&s| s.to_string()).collect();
         let result = parse_args(&mut args);
         assert_eq!(result.is_ok(), true);
         let Ok(result) = result else { panic!("impossible error") };
@@ -129,56 +121,23 @@ mod tests {
     #[test]
     fn test_parse_args_basic01() {
         // 一通り設定した場合の正常性を確認する1
-        let mut args = vec![
-            "program".to_string(),
-            "-c".to_string(),
-            "test.conf".to_string(),
-            "-r".to_string(),
-            "report01.sh".to_string(),
-            "-r".to_string(),
-            "report02.sh".to_string(),
-            "-m".to_string(),
-            "test".to_string(),
-            "--".to_string(),
-            "ls".to_string(),
-        ];
+        let mut args = vec!["program",
+            "-c", "test.conf",
+            "-r", "report01.sh", "-r", "report02.sh",
+            "-n", "notify01.sh", "-n", "notify02.sh",
+            "-m",
+            "test","--", "ls", "-al"
+        ].iter().map(|&s| s.to_string()).collect();
         let result = parse_args(&mut args);
         assert_eq!(result.is_ok(), true);
         let Ok(result) = result else { panic!("impossible error") };
         assert_eq!(result.is_some(), true);
         let Some((matches, args)) = result else { panic!("impossible error") };
         assert_eq!(matches.opt_str("config"), Some("test.conf".to_string()));
-        assert_eq!(matches.opt_strs("report"), vec!["report01.sh".to_string(), "report02.sh".to_string()]);
+        assert_eq!(matches.opt_strs("report"), vec!["report01.sh", "report02.sh"]);
+        assert_eq!(matches.opt_strs("notify"), vec!["notify01.sh", "notify02.sh"]);
         assert_eq!(matches.opt_present("multipled"), true);
         assert_eq!(matches.free.len(), 1);
-        assert_eq!(args, vec!["ls".to_string()]);
-    }
-    #[test]
-    fn test_parse_args_basic02() {
-        // 一通り設定した場合の正常性を確認する2
-        let mut args = vec![
-            "program".to_string(),
-            "-c".to_string(),
-            "test.conf".to_string(),
-            "-r".to_string(),
-            "report01.sh".to_string(),
-            "-r".to_string(),
-            "report02.sh".to_string(),
-            "-m".to_string(),
-            "test".to_string(),
-            "--".to_string(),
-            "ls".to_string(),
-            "-al".to_string(),
-        ];
-        let result = parse_args(&mut args);
-        assert_eq!(result.is_ok(), true);
-        let Ok(result) = result else { panic!("impossible error") };
-        assert_eq!(result.is_some(), true);
-        let Some((matches, args)) = result else { panic!("impossible error") };
-        assert_eq!(matches.opt_str("config"), Some("test.conf".to_string()));
-        assert_eq!(matches.opt_strs("report"), vec!["report01.sh".to_string(), "report02.sh".to_string()]);
-        assert_eq!(matches.opt_present("multipled"), true);
-        assert_eq!(matches.free.len(), 1);
-        assert_eq!(args, vec!["ls".to_string(), "-al".to_string()]);
+        assert_eq!(args, vec!["ls", "-al"]);
     }
 }

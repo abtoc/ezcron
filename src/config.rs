@@ -96,8 +96,8 @@ notifies=["notify.sh"]
         assert_eq!(config.ezcron.pid_dir, "run/ezcron".to_string());
         assert_eq!(config.option.is_some(), true);
         if let Some(option) = config.option {
-            assert_eq!(option.reports, vec!["report.sh".to_string()]);
-            assert_eq!(option.notifies, vec!["notify.sh".to_string()]);
+            assert_eq!(option.reports, vec!["report.sh"]);
+            assert_eq!(option.notifies, vec!["notify.sh"]);
         }
     }
 }
