@@ -4,7 +4,7 @@ use chrono::Local;
 use getopts::Matches;
 use subprocess::{Exec, ExitStatus, Popen, PopenConfig, Redirection};
 
-use crate::config;
+use crate::config::{self, ConfigOption};
 use crate::logger::Logger;
 use crate::pid;
 use crate::posix;
@@ -22,19 +22,28 @@ pub struct EzCron {
 }
 
 impl EzCron {
-    pub fn new(matches: &Matches) -> Self {
+    pub fn new(matches: &Matches) -> Result<Self, Box<dyn std::error::Error>> {
         // 設定ファイル読み込み
-        let conf = config::load(matches.opt_str("config")).unwrap();
+        let conf = config::load(matches.opt_str("config"))?;
+
+        // 識別子を得る
+        let identifer = matches.free[0].clone();
 
         // 設定ファイルの[option]を得る
-        let option = match conf.option {
-            Some(option) => option,
-            None => config::ConfigOption::default(),
-        };
+        let option = conf.option.unwrap_or(ConfigOption::new());
         let mut reports = option.reports;
         let mut notifies = option.notifies;
         let mut cwd = option.cwd;
-
+        
+        // 設定ファイルの[options.識別子]を得る
+        if let Some(option) = conf.options.get(&identifer) {
+            reports.append(&mut option.reports.clone());
+            notifies.append(&mut option.notifies.clone());
+            if option.cwd.is_some() {
+                cwd = option.cwd.clone();
+            }
+        }
+        
         // オプションに制定された分を追加する
         reports.append(&mut matches.opt_strs("report"));
         notifies.append(&mut matches.opt_strs("notify"));
@@ -45,15 +54,15 @@ impl EzCron {
         }
 
         // 構造体に値をセット
-        Self {
+        Ok(Self {
             log_dir: conf.ezcron.log_dir,
             pid_dir: conf.ezcron.pid_dir,
-            identifer: matches.free[0].clone(),
+            identifer: identifer.clone(),
             reports: reports,
             notifies: notifies,
             cwd: cwd,
             multipled: matches.opt_present("multipled"),
-        }
+        })
     }
     fn do_exec(&self, args: &[String], logger: &mut Logger) -> Result<Option<Report>, Box<dyn std::error::Error>> {
         // pidファイルの作成
@@ -222,6 +231,7 @@ fn execute_report(shell: &str, report: &Report, logger: &mut Logger) -> Result<(
 
 #[cfg(test)]
 mod tests {
+    use std::collections::HashMap;
     use std::fs::File;
     use std::io::Write;
     use std::path::{Path, PathBuf};
@@ -277,9 +287,10 @@ mod tests {
                 pid_dir: "run/ezcron".to_string(),
             },
             option: None,
+            options: HashMap::new(),
         };
         let _test_config_file = TestConfigFile::new("./test_ezcron_basic.toml", &test_config);
-        let main = EzCron::new(&matches);
+        let main = EzCron::new(&matches).unwrap();
         assert_eq!(main.log_dir, "var/log/ezcron".to_string());
         assert_eq!(main.pid_dir, "run/ezcron".to_string());
         assert_eq!(main.identifer, "test".to_string());
@@ -314,9 +325,10 @@ mod tests {
                 notifies: vec!["notify00.sh".to_string()],
                 cwd: Some("/path/to/base".to_string()),
             }),
+            options: HashMap::new(),
         };
         let _test_config_file = TestConfigFile::new("./test_ezcron_option.toml", &test_config);
-        let main = EzCron::new(&matches);
+        let main = EzCron::new(&matches).unwrap();
         assert_eq!(main.log_dir, "var/log/ezcron".to_string());
         assert_eq!(main.pid_dir, "run/ezcron".to_string());
         assert_eq!(main.identifer, "test".to_string());
@@ -348,9 +360,47 @@ mod tests {
                 notifies: vec!["notify00.sh".to_string()],
                 cwd: Some("/path/to/base".to_string()),
             }),
+            options: HashMap::new(),
         };
         let _test_config_file = TestConfigFile::new("./test_ezcron_config.toml", &test_config);
-        let main = EzCron::new(&matches);
+        let main = EzCron::new(&matches).unwrap();
+        assert_eq!(main.log_dir, "var/log/ezcron".to_string());
+        assert_eq!(main.pid_dir, "run/ezcron".to_string());
+        assert_eq!(main.identifer, "test".to_string());
+        assert_eq!(main.reports, vec!["report00.sh"]);
+        assert_eq!(main.notifies, vec!["notify00.sh"]);
+        assert_eq!(main.cwd, Some("/path/to/base".to_string()));
+        assert_eq!(main.multipled, false);
+    }
+
+    #[test]
+    // configの値が設定されたか確認する
+    fn test_ezcron_config_options() {
+        let mut args = vec!["program",
+            "-c", "./test_ezcron_config_options.toml",
+            "test", "--", "ls", "-al"
+        ].iter().map(|&s| s.to_string()).collect();
+        let result = parse_args(&mut args);
+        assert_eq!(result.is_ok(), true);
+        let Ok(result) = result else { panic!("impossible error") };
+        assert_eq!(result.is_some(), true);
+        let Some((matches, _)) = result else { panic!("impossible error") };
+        let mut options = HashMap::new();
+        options.insert("test".to_string(), ConfigOption {
+            reports: vec!["report00.sh".to_string()],
+            notifies: vec!["notify00.sh".to_string()],
+            cwd: Some("/path/to/base".to_string()),
+        });
+        let test_config = Config {
+            ezcron: ConfigEzCron {
+                log_dir: "var/log/ezcron".to_string(),
+                pid_dir: "run/ezcron".to_string(),
+            },
+            option: None,
+            options: options,
+        };
+        let _test_config_file = TestConfigFile::new("./test_ezcron_config_options.toml", &test_config);
+        let main = EzCron::new(&matches).unwrap();
         assert_eq!(main.log_dir, "var/log/ezcron".to_string());
         assert_eq!(main.pid_dir, "run/ezcron".to_string());
         assert_eq!(main.identifer, "test".to_string());

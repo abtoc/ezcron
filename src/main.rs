@@ -5,7 +5,6 @@ pub mod pid;
 pub mod posix;
 pub mod report;
 
-use std::env;
 use std::process;
 use ezcron::EzCron;
 use getopts::{Options, Matches};
@@ -65,7 +64,7 @@ Released under the MIT license.", VERSION);
 
 fn main() {
     // 引数を取得する
-    let mut args: Vec<String> = env::args().collect();
+    let mut args: Vec<String> = std::env::args().collect();
     // 引数をチェックする
     let Some((matches, args)) = (match parse_args(&mut args) {
         Ok(result) => result,
@@ -78,7 +77,13 @@ fn main() {
     };
 
     //  実行する
-    let main = EzCron::new(&matches);
+    let main = match EzCron::new(&matches) {
+        Ok(main) => main,
+        Err(err) => {
+            println!("ezcron error: {}", err);
+            process::exit(2);        
+        },
+    };
     if let Err(err) = main.run(&args) {
         println!("ezcron error: '{}", err);
         process::exit(2);

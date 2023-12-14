@@ -1,3 +1,4 @@
+use std::collections::HashMap;
 use std::fs;
 use serde::{Deserialize, Serialize};
 
@@ -22,8 +23,8 @@ pub struct ConfigOption {
     pub cwd: Option<String>,
 }
 
-impl Default for ConfigOption {
-    fn default() -> Self {
+impl ConfigOption {
+    pub fn new() -> Self {
         Self {
             reports: Vec::<String>::new(),
             notifies: Vec::<String>::new(),
@@ -36,6 +37,8 @@ impl Default for ConfigOption {
 pub struct Config {
     pub ezcron: ConfigEzCron,
     pub option: Option<ConfigOption>,
+    #[serde(default)]
+    pub options: HashMap<String, ConfigOption>,
 }
 
 pub fn load(conf: Option<String>) -> Result<Config, Box<dyn std::error::Error>> {
@@ -107,10 +110,31 @@ cwd="/path/to"
         assert_eq!(config.ezcron.log_dir, "var/log/ezcron".to_string());
         assert_eq!(config.ezcron.pid_dir, "run/ezcron".to_string());
         assert_eq!(config.option.is_some(), true);
-        if let Some(option) = config.option {
-            assert_eq!(option.reports, vec!["report.sh"]);
-            assert_eq!(option.notifies, vec!["notify.sh"]);
-            assert_eq!(option.cwd, Some("/path/to".to_string()));
-        }
+        let option = config.option.unwrap();
+        assert_eq!(option.reports, vec!["report.sh"]);
+        assert_eq!(option.notifies, vec!["notify.sh"]);
+        assert_eq!(option.cwd, Some("/path/to".to_string()));
+    }
+
+    #[test]
+    fn test_config_options() {
+        const CONFIG_FILE: &str = "test_config_options.toml";
+        let _test_confg_file = TestConfigFile::new(CONFIG_FILE, r#"[ezcron]
+log_dir="var/log/ezcron"
+pid_dir="run/ezcron"
+[options.key1]
+reports=["report.sh"]
+notifies=["notify.sh"]
+cwd="/path/to"
+"#);
+        let config = config::load(Some(CONFIG_FILE.to_string())).unwrap();
+        assert_eq!(config.ezcron.log_dir, "var/log/ezcron".to_string());
+        assert_eq!(config.ezcron.pid_dir, "run/ezcron".to_string());
+        assert_eq!(config.option.is_none(), true);
+        assert_eq!(config.options.get("key1").is_some(), true);
+        let option = config.options.get("key1").unwrap();
+        assert_eq!(option.reports, vec!["report.sh"]);
+        assert_eq!(option.notifies, vec!["notify.sh"]);
+        assert_eq!(option.cwd, Some("/path/to".to_string()));
     }
 }

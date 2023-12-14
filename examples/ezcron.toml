@@ -1,8 +1,21 @@
+# ログ、PIDファイルのディレクトリを指定する
 [ezcron]
 log_dir="./var/log/ezcron"
 pid_dir="./run/ezcron"
 
+# オプションの指定
 #[option]
 #reports=["/path/to/report.sh"]
 #notifies=["/path/to/notify.sh"]
 #cwd="/path/to"
+
+# ジョブごとのオプションの指定
+#[options.job1]
+#reports=["/path/to/report_job01.sh"]
+#notifies=["/path/to/notify_job01.sh"]
+#cwd="/path/to/job01"
+
+#[options.job2]
+#reports=["/path/to/report_job02.sh"]
+#notifies=["/path/to/notify_job02.sh"]
+#cwd="/path/to/job02"
