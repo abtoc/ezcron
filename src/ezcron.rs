@@ -34,6 +34,9 @@ impl EzCron {
         let mut reports = option.reports;
         let mut notifies = option.notifies;
         let mut cwd = option.cwd;
+        for (name, value) in option.env {
+            crate::env::set_var(&name, &value);
+        }
         
         // 設定ファイルの[options.識別子]を得る
         if let Some(option) = conf.options.get(&identifer) {
@@ -41,6 +44,9 @@ impl EzCron {
             notifies.append(&mut option.notifies.clone());
             if option.cwd.is_some() {
                 cwd = option.cwd.clone();
+            }
+            for (name, value) in &option.env {
+                crate::env::set_var(&name, &value);
             }
         }
         
@@ -51,6 +57,14 @@ impl EzCron {
         // オプションに指定されていれば、オプションの値を有効にする
         if matches.opt_str("cwd").is_some() {
             cwd = matches.opt_str("cwd");
+        }
+
+        // オプションから環境変数をセット
+        for env in matches.opt_strs("env") {
+            let Some(pos) = env.find("=") else { continue; };
+            let name = &env[0..pos];
+            let value = if pos < env.len() { &env[pos+1..] } else { "" };
+            crate::env::set_var(name, value);
         }
 
         // 構造体に値をセット
@@ -268,10 +282,9 @@ mod tests {
     fn test_ezcron_basic() {
         let mut args = vec!["program",
             "-c", "./test_ezcron_basic.toml",
-            "-r", "report01.sh",
-            "-r", "report02.sh",
-            "-n", "notify01.sh",
-            "-n", "notify02.sh",
+            "-r", "report01.sh", "-r", "report02.sh",
+            "-n", "notify01.sh", "-n", "notify02.sh",
+            "-e", "TEST1=VALUE1", "-e", "TEST2=VALUE2",
             "-w", "/path/to",
             "-m",
             "test", "--", "ls", "-al"]
@@ -297,6 +310,8 @@ mod tests {
         assert_eq!(main.reports, vec!["report01.sh", "report02.sh"]);
         assert_eq!(main.cwd, Some("/path/to".to_string()));
         assert_eq!(main.multipled, true);
+        assert_eq!(std::env::var("TEST1").unwrap(), "VALUE1");
+        assert_eq!(std::env::var("TEST2").unwrap(), "VALUE2");
     }
 
     #[test]
@@ -306,6 +321,7 @@ mod tests {
             "-c", "./test_ezcron_option.toml",
             "-r", "report01.sh", "-r", "report02.sh",
             "-n", "notify01.sh", "-n", "notify02.sh",
+            "-e", "TEST1=VALUE1", "-e", "TEST2=VALUE2",
             "-w", "/path/to",
             "-m",
             "test", "--", "ls", "-al"
@@ -324,6 +340,7 @@ mod tests {
                 reports: vec!["report00.sh".to_string()],
                 notifies: vec!["notify00.sh".to_string()],
                 cwd: Some("/path/to/base".to_string()),
+                env: HashMap::new(),
             }),
             options: HashMap::new(),
         };
@@ -350,6 +367,9 @@ mod tests {
         let Ok(result) = result else { panic!("impossible error") };
         assert_eq!(result.is_some(), true);
         let Some((matches, _)) = result else { panic!("impossible error") };
+        let mut env = HashMap::new();
+        env.insert("TEST1".to_string(), "VALUE1".to_string());
+        env.insert("TEST2".to_string(), "VALUE2".to_string());
         let test_config = Config {
             ezcron: ConfigEzCron {
                 log_dir: "var/log/ezcron".to_string(),
@@ -359,6 +379,7 @@ mod tests {
                 reports: vec!["report00.sh".to_string()],
                 notifies: vec!["notify00.sh".to_string()],
                 cwd: Some("/path/to/base".to_string()),
+                env: env,
             }),
             options: HashMap::new(),
         };
@@ -371,6 +392,8 @@ mod tests {
         assert_eq!(main.notifies, vec!["notify00.sh"]);
         assert_eq!(main.cwd, Some("/path/to/base".to_string()));
         assert_eq!(main.multipled, false);
+        assert_eq!(std::env::var("TEST1").unwrap(), "VALUE1");
+        assert_eq!(std::env::var("TEST2").unwrap(), "VALUE2");
     }
 
     #[test]
@@ -385,11 +408,15 @@ mod tests {
         let Ok(result) = result else { panic!("impossible error") };
         assert_eq!(result.is_some(), true);
         let Some((matches, _)) = result else { panic!("impossible error") };
+        let mut env = HashMap::new();
+        env.insert("TEST01".to_string(), "VALUE1".to_string());
+        env.insert("TEST02".to_string(), "VALUE2".to_string());
         let mut options = HashMap::new();
         options.insert("test".to_string(), ConfigOption {
             reports: vec!["report00.sh".to_string()],
             notifies: vec!["notify00.sh".to_string()],
             cwd: Some("/path/to/base".to_string()),
+            env: env,
         });
         let test_config = Config {
             ezcron: ConfigEzCron {
@@ -408,5 +435,7 @@ mod tests {
         assert_eq!(main.notifies, vec!["notify00.sh"]);
         assert_eq!(main.cwd, Some("/path/to/base".to_string()));
         assert_eq!(main.multipled, false);
+        assert_eq!(std::env::var("TEST01").unwrap(), "VALUE1");
+        assert_eq!(std::env::var("TEST02").unwrap(), "VALUE2");
     }
 }

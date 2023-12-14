@@ -47,6 +47,8 @@ Usage: ezcron [OPTIONS] IDENTIFER -- args
 Options:
     -r, --report SCRIPT reporting the result of process
     -n, --notify SCRIPT reporting the starting of process
+    -e, --env NAME=VALUE
+                        set environment variables
     -c, --config FILE   specifies the ezjob configuration file
                         (default '/etc/ezcron.toml')
     -w, --cwd DIRECTORY change current working directory

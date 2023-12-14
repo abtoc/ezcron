@@ -9,13 +9,21 @@ pid_dir="./run/ezcron"
 #notifies=["/path/to/notify.sh"]
 #cwd="/path/to"
 
+# 環境変数の設定
+#[option.env]
+#PATH=/path/to:${PATH}
+
 # ジョブごとのオプションの指定
 #[options.job1]
 #reports=["/path/to/report_job01.sh"]
 #notifies=["/path/to/notify_job01.sh"]
 #cwd="/path/to/job01"
+#[options.job01.env]
+#PATH=/path/to/job01:${PATH}
 
 #[options.job2]
 #reports=["/path/to/report_job02.sh"]
 #notifies=["/path/to/notify_job02.sh"]
 #cwd="/path/to/job02"
+#[options.job01.env]
+#PATH=/path/to/job01:${PATH}

@@ -21,6 +21,8 @@ pub struct ConfigOption {
     #[serde(default)]
     pub notifies: Vec<String>,
     pub cwd: Option<String>,
+    #[serde(default)]
+    pub env: HashMap<String, String>,
 }
 
 impl ConfigOption {
@@ -29,6 +31,7 @@ impl ConfigOption {
             reports: Vec::<String>::new(),
             notifies: Vec::<String>::new(),
             cwd: None,
+            env: HashMap::new(),
         }
     }
 }
@@ -105,6 +108,9 @@ pid_dir="run/ezcron"
 reports=["report.sh"]
 notifies=["notify.sh"]
 cwd="/path/to"
+[option.env]
+TEST1="VALUE1"
+TEST2="VALUE2"
 "#);
         let config = config::load(Some(CONFIG_FILE.to_string())).unwrap();
         assert_eq!(config.ezcron.log_dir, "var/log/ezcron".to_string());
@@ -114,6 +120,8 @@ cwd="/path/to"
         assert_eq!(option.reports, vec!["report.sh"]);
         assert_eq!(option.notifies, vec!["notify.sh"]);
         assert_eq!(option.cwd, Some("/path/to".to_string()));
+        assert_eq!(option.env.get("TEST1"), Some("VALUE1".to_string()).as_ref());
+        assert_eq!(option.env.get("TEST2"), Some("VALUE2".to_string()).as_ref());
     }
 
     #[test]
@@ -126,6 +134,9 @@ pid_dir="run/ezcron"
 reports=["report.sh"]
 notifies=["notify.sh"]
 cwd="/path/to"
+[options.key1.env]
+TEST1="VALUE1"
+TEST2="VALUE2"
 "#);
         let config = config::load(Some(CONFIG_FILE.to_string())).unwrap();
         assert_eq!(config.ezcron.log_dir, "var/log/ezcron".to_string());
@@ -136,5 +147,7 @@ cwd="/path/to"
         assert_eq!(option.reports, vec!["report.sh"]);
         assert_eq!(option.notifies, vec!["notify.sh"]);
         assert_eq!(option.cwd, Some("/path/to".to_string()));
+        assert_eq!(option.env.get("TEST1"), Some("VALUE1".to_string()).as_ref());
+        assert_eq!(option.env.get("TEST2"), Some("VALUE2".to_string()).as_ref());
     }
 }
