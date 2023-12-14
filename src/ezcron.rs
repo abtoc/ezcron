@@ -17,6 +17,7 @@ pub struct EzCron {
     identifer: String,
     reports: Vec<String>,
     notifies: Vec<String>,
+    cwd: Option<String>,
     multipled: bool,
 }
 
@@ -26,14 +27,22 @@ impl EzCron {
         let conf = config::load(matches.opt_str("config")).unwrap();
 
         // 設定ファイルの[option]を得る
-        let (mut reports, mut notifies) = match conf.option {
-            Some(option) => (option.reports.to_vec(), option.notifies.to_vec()),
-            None => (Vec::<String>::new(), Vec::<String>::new()),
+        let option = match conf.option {
+            Some(option) => option,
+            None => config::ConfigOption::default(),
         };
+        let mut reports = option.reports;
+        let mut notifies = option.notifies;
+        let mut cwd = option.cwd;
 
         // オプションに制定された分を追加する
         reports.append(&mut matches.opt_strs("report"));
         notifies.append(&mut matches.opt_strs("notify"));
+
+        // オプションに指定されていれば、オプションの値を有効にする
+        if matches.opt_str("cwd").is_some() {
+            cwd = matches.opt_str("cwd");
+        }
 
         // 構造体に値をセット
         Self {
@@ -42,6 +51,7 @@ impl EzCron {
             identifer: matches.free[0].clone(),
             reports: reports,
             notifies: notifies,
+            cwd: cwd,
             multipled: matches.opt_present("multipled"),
         }
     }
@@ -72,6 +82,7 @@ impl EzCron {
         let config = PopenConfig {
             stdout: Redirection::File(w.try_clone()?),
             stderr: Redirection::File(w.try_clone()?),
+            cwd: self.cwd.clone().map_or(None, |s| Some(s.into())),
             ..Default::default()
         };
         drop(w);
@@ -251,6 +262,7 @@ mod tests {
             "-r", "report02.sh",
             "-n", "notify01.sh",
             "-n", "notify02.sh",
+            "-w", "/path/to",
             "-m",
             "test", "--", "ls", "-al"]
             .iter().map(|&s| s.to_string()).collect();
@@ -272,6 +284,7 @@ mod tests {
         assert_eq!(main.pid_dir, "run/ezcron".to_string());
         assert_eq!(main.identifer, "test".to_string());
         assert_eq!(main.reports, vec!["report01.sh", "report02.sh"]);
+        assert_eq!(main.cwd, Some("/path/to".to_string()));
         assert_eq!(main.multipled, true);
     }
 
@@ -282,6 +295,7 @@ mod tests {
             "-c", "./test_ezcron_option.toml",
             "-r", "report01.sh", "-r", "report02.sh",
             "-n", "notify01.sh", "-n", "notify02.sh",
+            "-w", "/path/to",
             "-m",
             "test", "--", "ls", "-al"
         ].iter().map(|&s| s.to_string()).collect();
@@ -298,6 +312,7 @@ mod tests {
             option: Some(ConfigOption {
                 reports: vec!["report00.sh".to_string()],
                 notifies: vec!["notify00.sh".to_string()],
+                cwd: Some("/path/to/base".to_string()),
             }),
         };
         let _test_config_file = TestConfigFile::new("./test_ezcron_option.toml", &test_config);
@@ -307,6 +322,41 @@ mod tests {
         assert_eq!(main.identifer, "test".to_string());
         assert_eq!(main.reports, vec!["report00.sh", "report01.sh", "report02.sh"]);
         assert_eq!(main.notifies, vec!["notify00.sh", "notify01.sh", "notify02.sh"]);
+        assert_eq!(main.cwd, Some("/path/to".to_string()));
         assert_eq!(main.multipled, true);
+    }
+
+    #[test]
+    // configの値が設定されたか確認する
+    fn test_ezcron_config() {
+        let mut args = vec!["program",
+            "-c", "./test_ezcron_config.toml",
+            "test", "--", "ls", "-al"
+        ].iter().map(|&s| s.to_string()).collect();
+        let result = parse_args(&mut args);
+        assert_eq!(result.is_ok(), true);
+        let Ok(result) = result else { panic!("impossible error") };
+        assert_eq!(result.is_some(), true);
+        let Some((matches, _)) = result else { panic!("impossible error") };
+        let test_config = Config {
+            ezcron: ConfigEzCron {
+                log_dir: "var/log/ezcron".to_string(),
+                pid_dir: "run/ezcron".to_string(),
+            },
+            option: Some(ConfigOption {
+                reports: vec!["report00.sh".to_string()],
+                notifies: vec!["notify00.sh".to_string()],
+                cwd: Some("/path/to/base".to_string()),
+            }),
+        };
+        let _test_config_file = TestConfigFile::new("./test_ezcron_config.toml", &test_config);
+        let main = EzCron::new(&matches);
+        assert_eq!(main.log_dir, "var/log/ezcron".to_string());
+        assert_eq!(main.pid_dir, "run/ezcron".to_string());
+        assert_eq!(main.identifer, "test".to_string());
+        assert_eq!(main.reports, vec!["report00.sh"]);
+        assert_eq!(main.notifies, vec!["notify00.sh"]);
+        assert_eq!(main.cwd, Some("/path/to/base".to_string()));
+        assert_eq!(main.multipled, false);
     }
 }

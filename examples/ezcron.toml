@@ -5,3 +5,4 @@ pid_dir="./run/ezcron"
 #[option]
 #reports=["/path/to/report.sh"]
 #notifies=["/path/to/notify.sh"]
+#cwd="/path/to"

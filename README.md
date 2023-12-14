@@ -49,6 +49,7 @@ Options:
     -n, --notify SCRIPT reporting the starting of process
     -c, --config FILE   specifies the ezjob configuration file
                         (default '/etc/ezcron.toml')
+    -w, --cwd DIRECTORY change current working directory
     -m, --multipled     allows concurrent execution
         --version       print version and close
     -h, --help          print this help menu and close

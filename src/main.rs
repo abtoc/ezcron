@@ -24,6 +24,7 @@ fn parse_args(args: &mut Vec<String>) -> Result<Option<(Matches, Vec<String>)>, 
         .optmulti("r", "report", "reporting the result of process", "SCRIPT")
         .optmulti("n", "notify", "reporting the starting of process", "SCRIPT")
         .optopt("c", "config", "specifies the ezjob configuration file\n(default '/etc/ezcron/ezcron.toml')", "FILE")
+        .optopt("w", "cwd", "change current working directory", "DIRECTORY")
         .optflag("m", "multipled", "allows concurrent execution")
         .optflag("", "version", "print version and close")
         .optflag("h", "help", "print this help menu and close");
@@ -125,6 +126,7 @@ mod tests {
             "-c", "test.conf",
             "-r", "report01.sh", "-r", "report02.sh",
             "-n", "notify01.sh", "-n", "notify02.sh",
+            "-w", "/path/to",
             "-m",
             "test","--", "ls", "-al"
         ].iter().map(|&s| s.to_string()).collect();
@@ -136,6 +138,7 @@ mod tests {
         assert_eq!(matches.opt_str("config"), Some("test.conf".to_string()));
         assert_eq!(matches.opt_strs("report"), vec!["report01.sh", "report02.sh"]);
         assert_eq!(matches.opt_strs("notify"), vec!["notify01.sh", "notify02.sh"]);
+        assert_eq!(matches.opt_str("cwd"), Some("/path/to".to_string()));
         assert_eq!(matches.opt_present("multipled"), true);
         assert_eq!(matches.free.len(), 1);
         assert_eq!(args, vec!["ls", "-al"]);

@@ -19,6 +19,17 @@ pub struct ConfigOption {
     pub reports: Vec<String>,
     #[serde(default)]
     pub notifies: Vec<String>,
+    pub cwd: Option<String>,
+}
+
+impl Default for ConfigOption {
+    fn default() -> Self {
+        Self {
+            reports: Vec::<String>::new(),
+            notifies: Vec::<String>::new(),
+            cwd: None,
+        }
+    }
 }
 
 #[derive(Debug, Deserialize, Serialize)]
@@ -90,6 +101,7 @@ pid_dir="run/ezcron"
 [option]
 reports=["report.sh"]
 notifies=["notify.sh"]
+cwd="/path/to"
 "#);
         let config = config::load(Some(CONFIG_FILE.to_string())).unwrap();
         assert_eq!(config.ezcron.log_dir, "var/log/ezcron".to_string());
@@ -98,6 +110,7 @@ notifies=["notify.sh"]
         if let Some(option) = config.option {
             assert_eq!(option.reports, vec!["report.sh"]);
             assert_eq!(option.notifies, vec!["notify.sh"]);
+            assert_eq!(option.cwd, Some("/path/to".to_string()));
         }
     }
 }
