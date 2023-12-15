@@ -117,7 +117,7 @@ impl EzCron {
                 report.result = format!("process execute error! '{}'", err);
                 report.exitcode = 127;
                 report.status = ReportStatus::Finished;
-                report.end_at = Local::now();
+                report.end_at = Some(Local::now());
                 logger.write("--------")?;
                 logger.write(&report.result)?;
                 return Ok(Some(report));
@@ -149,7 +149,7 @@ impl EzCron {
             report.result = "process wait error".to_string();
             report.exitcode = 128;
             report.status = ReportStatus::Finished;
-            report.end_at = Local::now();
+            report.end_at = Some(Local::now());
             logger.write("--------")?;
             logger.write(&report.result)?;
             return Ok(Some(report));
@@ -157,7 +157,7 @@ impl EzCron {
     
         // 終了処理
         logger.write("--------")?;
-        report.end_at = Local::now();
+        report.end_at = Some(Local::now());
         match status {
             ExitStatus::Exited(code) => {
                 report.result = format!("process terminated code({})", code);

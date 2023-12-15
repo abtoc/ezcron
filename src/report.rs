@@ -22,7 +22,7 @@ pub struct Report {
     pub status: ReportStatus,
     pub log: String,
     pub start_at: DateTime<Local>,
-    pub end_at: DateTime<Local>, 
+    pub end_at: Option<DateTime<Local>>, 
 }
 
 impl Default for Report {
@@ -39,7 +39,7 @@ impl Default for Report {
             status: ReportStatus::Running,
             log: String::default(),
             start_at: Local::now(),
-            end_at: DateTime::<Local>::default(),
+            end_at: None,
         }        
     }
 }
