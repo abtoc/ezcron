@@ -452,6 +452,7 @@ mod tests {
     #[test]
     fn test_ezcron_cwd() {
         let mut args = vec!["program",
+            "-c", "./test_ezcron_cwd.toml",
             "-e", "AAA=BBB",
             "-w", "$AAA",
             "test", "--", "ls", "-al"
