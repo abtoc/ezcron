@@ -1,6 +1,6 @@
 use regex::Regex;
 
-pub fn set_var(name: &str, value: &str)  {
+pub fn change_var(value: &str) -> String {
     // 値に環境変数があれば変更する
     let re = Regex::new(r"(\$[_a-zA-Z][_0-9a-zA-Z]*|\$\{[_a-zA-Z][_0-9a-zA-Z]*\})").unwrap();
     let mut value = value.to_string();
@@ -14,13 +14,23 @@ pub fn set_var(name: &str, value: &str)  {
         let env_val = std::env::var(env_key).unwrap_or("".to_string());
         value = value.replace(env_name, &env_val);
     }
+    value
+}
 
+pub fn set_var(name: &str, value: &str)  {
+    let value = change_var(value);
     // 環境変数にセット
     std::env::set_var(name, value);
 }
 
 #[cfg(test)]
 mod tests {
+    #[test]
+    fn test_change_var() {
+        crate::env::set_var("AAA", "BBB");
+        assert_eq!(crate::env::change_var("$AAA"), "BBB".to_string());
+    }
+
     #[test]
     fn test_parse_env_base() {
         crate::env::set_var("AAA", "BBB");

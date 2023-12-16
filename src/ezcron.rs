@@ -54,11 +54,6 @@ impl EzCron {
         reports.append(&mut matches.opt_strs("report"));
         notifies.append(&mut matches.opt_strs("notify"));
 
-        // オプションに指定されていれば、オプションの値を有効にする
-        if matches.opt_str("cwd").is_some() {
-            cwd = matches.opt_str("cwd");
-        }
-
         // オプションから環境変数をセット
         for env in matches.opt_strs("env") {
             let Some(pos) = env.find("=") else { continue; };
@@ -66,6 +61,21 @@ impl EzCron {
             let value = if pos < env.len() { &env[pos+1..] } else { "" };
             crate::env::set_var(name, value);
         }
+
+        // オプションに指定されていれば、オプションの値を有効にする
+        if matches.opt_str("cwd").is_some() {
+            cwd = matches.opt_str("cwd");
+        }
+
+        // オプションに指定されていれば、オプションの値を有効にする
+        if matches.opt_str("cwd").is_some() {
+            cwd = matches.opt_str("cwd");
+        }
+        // カレントディレクトリの環境変数を展開する
+        cwd = match  cwd {
+            None => None,
+            Some(value) => Some(crate::env::change_var(&value)),
+        };
 
         // 構造体に値をセット
         Ok(Self {
@@ -438,4 +448,29 @@ mod tests {
         assert_eq!(std::env::var("TEST01").unwrap(), "VALUE1");
         assert_eq!(std::env::var("TEST02").unwrap(), "VALUE2");
     }
+
+    #[test]
+    fn test_ezcron_cwd() {
+        let mut args = vec!["program",
+            "-e", "AAA=BBB",
+            "-w", "$AAA",
+            "test", "--", "ls", "-al"
+        ].iter().map(|&s| s.to_string()).collect();
+        let result = parse_args(&mut args);
+        assert_eq!(result.is_ok(), true);
+        let Ok(result) = result else { panic!("impossible error") };
+        assert_eq!(result.is_some(), true);
+        let Some((matches, _)) = result else { panic!("impossible error") };
+        let test_config = Config {
+            ezcron: ConfigEzCron {
+                log_dir: "var/log/ezcron".to_string(),
+                pid_dir: "run/ezcron".to_string(),
+            },
+            option: None,
+            options: HashMap::new(),
+        };
+        let _test_config_file = TestConfigFile::new("./test_ezcron_cwd.toml", &test_config);
+        let main = EzCron::new(&matches).unwrap();
+        assert_eq!(main.cwd, Some("BBB".to_string()));
+    }    
 }
