@@ -34,7 +34,7 @@ impl EzCron {
         let mut reports = option.reports;
         let mut notifies = option.notifies;
         let mut cwd = option.cwd;
-        for (name, value) in option.env {
+        for (name, value) in option.env.iter() {
             crate::env::set_var(&name, &value);
         }
         
@@ -45,7 +45,7 @@ impl EzCron {
             if option.cwd.is_some() {
                 cwd = option.cwd.clone();
             }
-            for (name, value) in &option.env {
+            for (name, value) in option.env.iter() {
                 crate::env::set_var(&name, &value);
             }
         }
@@ -259,6 +259,7 @@ mod tests {
     use std::fs::File;
     use std::io::Write;
     use std::path::{Path, PathBuf};
+    use registorder_map::RegistOrderMap;
     use crate::config::{Config, ConfigEzCron, ConfigOption};
     use crate::ezcron::EzCron;
     use crate::parse_args;
@@ -350,7 +351,7 @@ mod tests {
                 reports: vec!["report00.sh".to_string()],
                 notifies: vec!["notify00.sh".to_string()],
                 cwd: Some("/path/to/base".to_string()),
-                env: HashMap::new(),
+                env: RegistOrderMap::new(),
             }),
             options: HashMap::new(),
         };
@@ -377,7 +378,7 @@ mod tests {
         let Ok(result) = result else { panic!("impossible error") };
         assert_eq!(result.is_some(), true);
         let Some((matches, _)) = result else { panic!("impossible error") };
-        let mut env = HashMap::new();
+        let mut env = RegistOrderMap::new();
         env.insert("TEST1".to_string(), "VALUE1".to_string());
         env.insert("TEST2".to_string(), "VALUE2".to_string());
         let test_config = Config {
@@ -418,7 +419,7 @@ mod tests {
         let Ok(result) = result else { panic!("impossible error") };
         assert_eq!(result.is_some(), true);
         let Some((matches, _)) = result else { panic!("impossible error") };
-        let mut env = HashMap::new();
+        let mut env = RegistOrderMap::new();
         env.insert("TEST01".to_string(), "VALUE1".to_string());
         env.insert("TEST02".to_string(), "VALUE2".to_string());
         let mut options = HashMap::new();

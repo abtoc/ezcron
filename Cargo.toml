@@ -1,6 +1,6 @@
 [package]
 name = "ezcron"
-version = "0.8.2"
+version = "0.8.3"
 edition = "2021"
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
@@ -11,6 +11,7 @@ gethostname = "0.4.3"
 getopts = "0.2.21"
 libc = "0.2.150"
 regex = "1.10.2"
+registorder-map = { version = "0.1.0", features = ["serde"] }
 serde = { version = "1.0.193", features = ["derive"] }
 serde_json = "1.0.108"
 subprocess = "0.2.9"

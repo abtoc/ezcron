@@ -82,13 +82,14 @@ checksum = "5443807d6dff69373d433ab9ef5378ad8df50ca6298caf15de6e52e24aaf54d5"
 
 [[package]]
 name = "ezcron"
-version = "0.8.2"
+version = "0.8.3"
 dependencies = [
  "chrono",
  "gethostname",
  "getopts",
  "libc",
  "regex",
+ "registorder-map",
  "serde",
  "serde_json",
  "subprocess",
@@ -295,6 +296,15 @@ name = "regex-syntax"
 version = "0.8.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "c08c74e62047bb2de4ff487b251e4a92e24f48745648451635cec7d591162d9f"
+
+[[package]]
+name = "registorder-map"
+version = "0.1.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "0949fd7d466b765b9ed2736490cdbbc4754506cc266c080019dd8a7965738c85"
+dependencies = [
+ "serde",
+]
 
 [[package]]
 name = "ryu"

@@ -1,5 +1,6 @@
 use std::collections::HashMap;
 use std::fs;
+use registorder_map::RegistOrderMap;
 use serde::{Deserialize, Serialize};
 
 #[cfg(debug_assertions)]
@@ -22,7 +23,7 @@ pub struct ConfigOption {
     pub notifies: Vec<String>,
     pub cwd: Option<String>,
     #[serde(default)]
-    pub env: HashMap<String, String>,
+    pub env: RegistOrderMap<String, String>,
 }
 
 impl ConfigOption {
@@ -31,7 +32,7 @@ impl ConfigOption {
             reports: Vec::<String>::new(),
             notifies: Vec::<String>::new(),
             cwd: None,
-            env: HashMap::new(),
+            env: RegistOrderMap::new(),
         }
     }
 }
@@ -120,8 +121,8 @@ TEST2="VALUE2"
         assert_eq!(option.reports, vec!["report.sh"]);
         assert_eq!(option.notifies, vec!["notify.sh"]);
         assert_eq!(option.cwd, Some("/path/to".to_string()));
-        assert_eq!(option.env.get("TEST1"), Some("VALUE1".to_string()).as_ref());
-        assert_eq!(option.env.get("TEST2"), Some("VALUE2".to_string()).as_ref());
+        assert_eq!(option.env.get(&"TEST1".to_string()), Some("VALUE1".to_string()).as_ref());
+        assert_eq!(option.env.get(&"TEST2".to_string()), Some("VALUE2".to_string()).as_ref());
     }
 
     #[test]
@@ -147,7 +148,7 @@ TEST2="VALUE2"
         assert_eq!(option.reports, vec!["report.sh"]);
         assert_eq!(option.notifies, vec!["notify.sh"]);
         assert_eq!(option.cwd, Some("/path/to".to_string()));
-        assert_eq!(option.env.get("TEST1"), Some("VALUE1".to_string()).as_ref());
-        assert_eq!(option.env.get("TEST2"), Some("VALUE2".to_string()).as_ref());
+        assert_eq!(option.env.get(&"TEST1".to_string()), Some("VALUE1".to_string()).as_ref());
+        assert_eq!(option.env.get(&"TEST2".to_string()), Some("VALUE2".to_string()).as_ref());
     }
 }
